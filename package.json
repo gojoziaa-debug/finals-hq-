@@ -1,0 +1,17 @@
+{
+  "name": "finals-hq",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FINALS HQ: unofficial tracker for THE FINALS. Fan project, not affiliated with Embark Studios.",
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

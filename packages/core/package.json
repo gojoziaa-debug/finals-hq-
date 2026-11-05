@@ -1,0 +1,16 @@
+{
+  "name": "@finals-hq/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure domain logic of FINALS HQ: rating, identity, validation. No I/O, no framework.",
+  "type": "module",
+  "exports": {
+    "./rating": "./src/rating/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json",
+    "simulate": "node --experimental-strip-types scripts/simulate.ts"
+  }
+}
