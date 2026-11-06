@@ -7,7 +7,7 @@ import { RelativeTime } from "@/components/hq/RelativeTime";
 import { shownValue } from "@/components/hq/RatingPanel";
 import { Link } from "@/i18n/navigation";
 import { getRatingExample, getRatingRun, ratingEnv } from "@/lib/data";
-import { formatDate, formatNumber, formatRank, type Locale } from "@/lib/format";
+import { formatDate, formatDecimal, formatNumber, formatRank, type Locale } from "@/lib/format";
 import { playerSlug } from "@/lib/players";
 import { COMPONENTS, contributions, ratingVisibility, WEIGHTS } from "@/lib/rating";
 import type { PlayerRatingData, RatingRunInfo } from "@/lib/types";
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return { title: t("methodologyTitle"), description: t("methodologyDescription"), alternates: { canonical: `/${locale}/methodology`, languages: { fr: "/fr/methodology", en: "/en/methodology" } } };
 }
 
-const ROUND = (x: number | null | undefined, l: Locale, digits = 0) => (x === null || x === undefined ? "n/d" : formatNumber(Math.round(x * 10 ** digits) / 10 ** digits, l));
+const ROUND = (x: number | null | undefined, l: Locale, digits = 0) => (x === null || x === undefined ? "n/d" : formatDecimal(x, l, digits));
 
 /**
  * Méthodologie du FINALS HQ Rating v1 (phase D) avec un exemple vivant : le 500e du classement, ses composantes
@@ -120,7 +120,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
               </tbody>
             </table>
             <p className="mt-2 text-[12px] text-text-2">
-              {t("observed", { days: formatNumber(Math.floor(run.observedDays * 10) / 10, l), total: run.calibrationDays, players: formatNumber(run.players, l) })} · {tr("computed")} <RelativeTime iso={run.computedAt} now={renderedAt} />
+              {t("observed", { days: formatDecimal(Math.floor(run.observedDays * 10) / 10, l), total: run.calibrationDays, players: formatNumber(run.players, l) })} · {tr("computed")} <RelativeTime iso={run.computedAt} now={renderedAt} />
             </p>
           </>
         )}

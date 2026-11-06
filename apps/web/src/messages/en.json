@@ -565,7 +565,7 @@
       "level": "RS read against the league thresholds and rank read on a log scale, half and half.",
       "peak": "Best Level reached this season since our first snapshot.",
       "momentum": "Progress over 24 h, 7 d and 30 d compared with other active players.",
-      "consistency": "Average gap to your best RS of the month, day by day ({days} active days out of 30, 10 needed).",
+      "consistency": "Average gap to your best RS of the month, day by day (active days: {days} of 30, 10 needed).",
       "legacy": "Finished seasons: top 500, top 100, #1, Diamond, Platinum."
     },
     "pending": "calibrating",
@@ -573,7 +573,8 @@
     "footerOpen": "Rating v{version}.",
     "footerCalibrating": "Level, Peak and Legacy need no reference and are shown already; the score, Momentum and Consistency wait until {date}.",
     "computed": "Computed",
-    "methodLink": "Methodology"
+    "methodLink": "Methodology",
+    "weightNote": "Official weights; while a component is missing, the others share its weight."
   },
   "ratingPage": {
     "title": {

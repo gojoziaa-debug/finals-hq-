@@ -3,8 +3,8 @@ import { InfoChip } from "@/components/hq/InfoChip";
 import { RelativeTime } from "@/components/hq/RelativeTime";
 import { ComponentBar, RatingGauge, RatingRadar } from "@/components/hq/RatingVisuals";
 import { Link } from "@/i18n/navigation";
-import { formatDate, formatNumber, type Locale } from "@/lib/format";
-import { CALIBRATION_FREE, COMPONENTS, contributions, type RatingVisibility } from "@/lib/rating";
+import { formatDate, formatDecimal, formatNumber, type Locale } from "@/lib/format";
+import { CALIBRATION_FREE, COMPONENTS, contributions, WEIGHTS, type RatingVisibility } from "@/lib/rating";
 import type { PlayerRatingData, RatingComponentKey } from "@/lib/types";
 
 /** Valeur d'une composante telle qu'affichée : masquée tant que la note est en calibration, sauf niveau, pic, legacy. */
@@ -48,7 +48,7 @@ export async function RatingPanel({ rating, visibility, locale, renderedAt }: { 
               <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-valuemin={0} aria-valuemax={visibility.calibrationDays} aria-valuenow={Math.round(visibility.observedDays * 10) / 10} aria-label={t("progressLabel")}>
                 <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(3, progress * 100)}%` }} />
               </div>
-              <p className="mt-1 text-center text-[12px] text-text-2">{t("progress", { days: formatNumber(Math.floor(visibility.observedDays * 10) / 10, locale), total: visibility.calibrationDays })}</p>
+              <p className="mt-1 text-center text-[12px] text-text-2">{t("progress", { days: formatDecimal(Math.floor(visibility.observedDays * 10) / 10, locale), total: visibility.calibrationDays })}</p>
             </div>
           )}
         </div>
@@ -56,15 +56,15 @@ export async function RatingPanel({ rating, visibility, locale, renderedAt }: { 
       </div>
 
       <ul className="mt-4 grid grid-cols-1 gap-3">
-        {parts.map(({ key, weight }) => {
+        {parts.map(({ key }) => {
           const value = shownValue(rating, key, open);
           const pending = value === null && rating[key] !== null;
           return (
             <li key={key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1">
               <span className="text-body-sm font-semibold">
-                {t(`component.${key}`)} <span className="font-normal text-text-2">· {formatNumber(Math.round(weight * 1000) / 10, locale)} %</span>
+                {t(`component.${key}`)} <span className="font-normal text-text-2">· {formatDecimal(WEIGHTS[key] * 100, locale)} %</span>
               </span>
-              <span className="text-right font-display text-[19px] font-bold tnum">{value === null ? <span className="text-body-sm font-normal text-text-2">{pending ? t("pending") : t("na")}</span> : formatNumber(Math.round(value * 10) / 10, locale)}</span>
+              <span className="text-right font-display text-[19px] font-bold tnum">{value === null ? <span className="text-body-sm font-normal text-text-2">{pending ? t("pending") : t("na")}</span> : formatDecimal(value, locale)}</span>
               <ComponentBar value={value} className="col-span-2" />
               <span className="col-span-2 text-[12px] text-text-2">{t(`componentHint.${key}`, { days: rating.activeDays30 })}</span>
             </li>
@@ -73,7 +73,7 @@ export async function RatingPanel({ rating, visibility, locale, renderedAt }: { 
       </ul>
 
       <p className="mt-4 text-[12px] text-text-2">
-        {open ? t("footerOpen", { version: rating.run.version }) : t("footerCalibrating", { date: readyLabel })}{" "}
+        {open ? t("footerOpen", { version: rating.run.version }) : t("footerCalibrating", { date: readyLabel })} {t("weightNote")}{" "}
         {t("computed")} <RelativeTime iso={rating.run.computedAt} now={renderedAt} />
         {" · "}
         <Link href="/methodology" className="font-semibold text-accent-ink underline">{t("methodLink")}</Link>

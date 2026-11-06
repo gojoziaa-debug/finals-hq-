@@ -10,7 +10,7 @@ import { LIVE_SEASON } from "@/lib/boards";
 import { cn } from "@/lib/cn";
 import { getRatingBoard, ratingEnv } from "@/lib/data";
 import { DataUnavailableError } from "@/lib/db";
-import { formatDate, formatNumber, formatRank, type Locale } from "@/lib/format";
+import { formatDate, formatDecimal, formatNumber, formatRank, type Locale } from "@/lib/format";
 import { playerSlug, splitName } from "@/lib/players";
 import { ratingVisibility } from "@/lib/rating";
 import type { RatingBoardData, RatingSort } from "@/lib/types";
@@ -87,7 +87,7 @@ export default async function RatingPage({ params, searchParams }: { params: Pro
             <div className="h-2 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-valuemin={0} aria-valuemax={v.calibrationDays} aria-valuenow={Math.round(v.observedDays * 10) / 10} aria-label={tr("progressLabel")}>
               <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(3, Math.min(1, v.observedDays / v.calibrationDays) * 100)}%` }} />
             </div>
-            <p className="mt-1 text-[12px] text-text-2">{tr("progress", { days: formatNumber(Math.floor(v.observedDays * 10) / 10, l), total: v.calibrationDays })}</p>
+            <p className="mt-1 text-[12px] text-text-2">{tr("progress", { days: formatDecimal(Math.floor(v.observedDays * 10) / 10, l), total: v.calibrationDays })}</p>
           </div>
           <p className="mt-3 text-body-sm">
             <Link href="/methodology" className="font-semibold text-accent-ink underline">{tr("methodLink")}</Link>

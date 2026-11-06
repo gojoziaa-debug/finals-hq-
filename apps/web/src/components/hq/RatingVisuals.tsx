@@ -13,7 +13,7 @@ export function RatingGauge({ value, label, sub, className }: { value: number | 
   return (
     <figure className={cn("relative mx-auto w-full max-w-[220px]", className)}>
       <svg viewBox={`0 0 ${W} 112`} role="img" aria-label={label} className="block w-full">
-        <path d={gaugeArc(99, cx, cy, r)} fill="none" strokeWidth="14" strokeLinecap="round" className={cn("stroke-surface-raised", value === null && "stroke-border")} strokeDasharray={value === null ? "2 8" : undefined} />
+        <path d={gaugeArc(99, cx, cy, r)} fill="none" strokeWidth="14" strokeLinecap="round" className={cn("stroke-surface-raised", value === null && "stroke-border")} strokeDasharray={value === null ? "1 9" : undefined} />
         {value !== null && value > 0 && <path d={gaugeArc(value, cx, cy, r)} fill="none" strokeWidth="14" strokeLinecap="round" className="stroke-accent" />}
         <text x={cx} y={cy - 8} textAnchor="middle" className="fill-text font-display" style={{ fontSize: 56, fontWeight: 800 }}>
           {value === null ? "—" : value}
@@ -32,13 +32,13 @@ export function RatingGauge({ value, label, sub, className }: { value: number | 
  */
 export function RatingRadar({ axes, label, className }: { axes: Array<{ label: string; value: number | null }>; label: string; className?: string }) {
   const S = 220;
-  const pad = 46;
+  const pad = 30;
   const outer = radarPoints(axes.map(() => 100), S, pad);
   const rings = [25, 50, 75, 100].map((v) => radarPoints(axes.map(() => v), S, pad));
   const pts = radarPoints(axes.map((a) => a.value), S, pad);
   const known = axes.some((a) => a.value !== null);
   return (
-    <svg viewBox={`0 0 ${S} ${S}`} role="img" aria-label={label} className={cn("block w-full max-w-[260px]", className)}>
+    <svg viewBox={`-44 4 ${S + 88} ${S - 8}`} role="img" aria-label={label} className={cn("block w-full max-w-[320px]", className)}>
       {rings.map((ring, i) => (
         <polygon key={i} points={ring.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" className="stroke-border" strokeWidth="1" />
       ))}

@@ -565,7 +565,7 @@
       "level": "RS lu sur les seuils de ligue et rang lu sur une échelle logarithmique, à parts égales.",
       "peak": "Meilleur Niveau atteint cette saison depuis le début de nos relevés.",
       "momentum": "Progression sur 24 h, 7 j et 30 j comparée à celle des joueurs actifs.",
-      "consistency": "Écart moyen à ton meilleur RS du mois, jour après jour ({days} j actifs sur 30, il en faut 10).",
+      "consistency": "Écart moyen à ton meilleur RS du mois, jour après jour (jours actifs : {days} sur 30, il en faut 10).",
       "legacy": "Saisons terminées : top 500, top 100, n° 1, Diamond, Platinum."
     },
     "pending": "en calibration",
@@ -573,7 +573,8 @@
     "footerOpen": "Rating v{version}.",
     "footerCalibrating": "Niveau, Pic et Legacy ne dépendent d'aucune référence et s'affichent déjà ; la note, le Momentum et la Consistance attendent le {date}.",
     "computed": "Calculé",
-    "methodLink": "Méthodologie"
+    "methodLink": "Méthodologie",
+    "weightNote": "Poids officiels ; tant qu'une composante manque, les autres se partagent son poids."
   },
   "ratingPage": {
     "title": {
