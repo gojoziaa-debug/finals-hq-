@@ -2,7 +2,7 @@
  * Ingestion des relevés du collecteur (chaînes full + deltas) vers Postgres.
  * Un fichier = une transaction ; un fichier déjà présent dans `snapshots` est ignoré (idempotence).
  */
-import { LEADERBOARDS, SEASONS, leaderboardByKey, schema, type Db, type LeaderboardDef } from "@finals-hq/db";
+import { LEADERBOARDS, SEASONS, leaderboardByKey, schema, timestamptz, type Db, type LeaderboardDef } from "@finals-hq/db";
 import { ensureRsEventsPartition } from "@finals-hq/db/migrate";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { FileFormatError, type DeltaSnapshot, type FullSnapshot, type SnapshotFile } from "./files.ts";
@@ -53,7 +53,9 @@ class ChainError extends Error {
   }
 }
 
-const CHUNK = 500;
+// Rows per statement: the CI runner talks to Supabase across the Atlantic, so fewer, larger
+// round trips matter more than statement size (postgres.js allows 65 534 parameters).
+const CHUNK = 2000;
 const quiet: Logger = () => {};
 
 /** Seasons and leaderboards of the catalog, upserted so foreign keys always resolve. */
@@ -484,7 +486,7 @@ async function applyInTransaction(tx: Db, lb: LeaderboardDef, file: string, snap
   await writeCutoffs(tx, lb, snapshotId, takenAt, current);
   await upsertClubs(tx, toUpsert, takenAt);
   for (const part of chunk(toUpsert.map((r) => r.playerId), CHUNK)) {
-    await tx.update(players).set({ lastSeenAt: takenAt }).where(and(inArray(players.id, part), sql`${players.lastSeenAt} < ${takenAt}`));
+    await tx.update(players).set({ lastSeenAt: takenAt }).where(and(inArray(players.id, part), sql`${players.lastSeenAt} < ${timestamptz(takenAt)}`));
   }
 
   const { byName: _ignored, ...identity } = resolution;
@@ -501,7 +503,7 @@ export async function refreshWindowDeltas(db: Db, key: string, asOf: Date): Prom
       FROM (
         SELECT DISTINCT ON (player_id) player_id, score
         FROM rs_events
-        WHERE leaderboard_key = ${key} AND taken_at <= ${asOf}::timestamptz - make_interval(hours => ${hours})
+        WHERE leaderboard_key = ${key} AND taken_at <= ${timestamptz(asOf)} - make_interval(hours => ${hours})
         ORDER BY player_id, taken_at DESC
       ) p
       WHERE c.leaderboard_key = ${key} AND c.player_id = p.player_id`);

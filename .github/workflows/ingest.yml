@@ -37,7 +37,7 @@ env:
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.command == 'import-archives' && 90 || 20 }}
+    timeout-minutes: ${{ inputs.command == 'import-archives' && 240 || 30 }}
     steps:
       - name: Database secrets present?
         if: env.HAS_DATABASE != 'true'

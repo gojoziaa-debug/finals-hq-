@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { SQL } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import postgres from "postgres";
@@ -14,6 +14,16 @@ export * from "./catalog.ts";
  * Type de base commun aux deux pilotes (postgres.js en production, PGlite en test) et aux transactions.
  */
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
+
+/**
+ * A Date inside a raw `sql` fragment. Drizzle's postgres-js driver makes the timestamp serializers
+ * transparent, so a bare Date reaches the wire as an object and postgres.js throws
+ * ERR_INVALID_ARG_TYPE (tests on PGlite do not catch it). Columns map their own values; raw
+ * fragments must go through this helper.
+ */
+export function timestamptz(date: Date): SQL {
+  return sql`${date.toISOString()}::timestamptz`;
+}
 
 /**
  * Lignes d'une requête SQL brute, quel que soit le pilote : postgres.js renvoie un tableau,

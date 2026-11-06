@@ -46,3 +46,15 @@ describe("ssl options", async () => {
     expect(sslOptionsFor("postgresql://u:p@db.example.org:5432/db")).toEqual({ rejectUnauthorized: true, servername: "db.example.org" });
   });
 });
+
+describe("timestamptz", () => {
+  it("passes a Date to raw SQL as an ISO string, never as a Date object", async () => {
+    const { PgDialect } = await import("drizzle-orm/pg-core");
+    const { sql } = await import("drizzle-orm");
+    const { timestamptz } = await import("./index.ts");
+    const at = new Date("2026-11-05T22:05:21.579Z");
+    const query = new PgDialect().sqlToQuery(sql`SELECT 1 WHERE now() > ${timestamptz(at)}`);
+    expect(query.sql).toBe("SELECT 1 WHERE now() > $1::timestamptz");
+    expect(query.params).toEqual(["2026-11-05T22:05:21.579Z"]);
+  });
+});

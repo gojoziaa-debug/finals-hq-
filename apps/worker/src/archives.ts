@@ -13,7 +13,7 @@ import type { DataSource } from "./source.ts";
 import { chunk } from "./state.ts";
 
 const { snapshots, seasonResults, clubs } = schema;
-const CHUNK = 500;
+const CHUNK = 2000; // see ingest.ts
 
 export interface ArchiveOptions {
   only?: string | undefined;

@@ -71,7 +71,7 @@ export function contradicts(a: PlatformNames, b: PlatformNames): boolean {
   return PLATFORM_KINDS.some((kind) => a[kind] !== null && b[kind] !== null && a[kind] !== b[kind]);
 }
 
-const CHUNK = 500;
+const CHUNK = 2000; // see ingest.ts
 
 async function insertPlayers(
   tx: Db,
