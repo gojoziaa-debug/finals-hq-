@@ -7,6 +7,7 @@ import { ensureRsEventsPartition } from "@finals-hq/db/migrate";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { FileFormatError, type DeltaSnapshot, type FullSnapshot, type SnapshotFile } from "./files.ts";
 import { platformCounts, resolveIdentities, type RemovedPlayer, type Resolution } from "./identity.ts";
+import { describeError } from "./errors.ts";
 import { RowError, indexRows, normalizeRow, type NormalizedRow } from "./normalize.ts";
 import type { DataSource } from "./source.ts";
 import { assignRanks, chunk, cutoffs, hasScoreChange, previousUtcDay, utcDay, type CurrentRow } from "./state.ts";
@@ -153,9 +154,9 @@ export async function ingestAll(db: Db, source: DataSource, options: IngestOptio
     try {
       outcomes.push(...(await ingestLeaderboard(db, source, key, runId, log)));
     } catch (error) {
-      const message = `${key} : ${(error as Error).message}`;
+      const message = `${key} : ${describeError(error)}`;
       errors.push(message);
-      log(`[${key}] ERREUR ${(error as Error).message}`);
+      log(`[${key}] ERREUR ${describeError(error)}`);
     }
   }
   const summary = summarize(runId, outcomes, errors);
@@ -335,8 +336,10 @@ async function applyFile(db: Db, source: DataSource, lb: LeaderboardDef, file: s
     const takenAt = new Date(snapshot.source.fetchedAt);
     if (Number.isNaN(takenAt.getTime())) throw new FileFormatError(`fetchedAt illisible : ${snapshot.source.fetchedAt}`);
     await ensureRsEventsPartition(db, takenAt);
+    const startedAt = Date.now();
     const outcome = await db.transaction((tx) => applyInTransaction(tx, lb, file, snapshot as SnapshotFile, takenAt, last, runId));
-    log(`[${lb.key}] ${file} appliqué : ${outcome.rows} lignes, ${outcome.events} événements, ${outcome.identity?.created ?? 0} nouveaux joueurs`);
+    const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+    log(`[${lb.key}] ${file} appliqué : ${outcome.rows} lignes, ${outcome.events} événements, ${outcome.identity?.created ?? 0} nouveaux joueurs (${seconds} s)`);
     return outcome;
   } catch (error) {
     if (error instanceof FileFormatError || error instanceof RowError || error instanceof ChainError) {

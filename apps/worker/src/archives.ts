@@ -2,6 +2,7 @@
  * Import unique des classements figés (seasons/<clé>/full-*.json.gz, écrits par le script
  * import-archives du dépôt de données) vers season_results. Un fichier = une transaction.
  */
+import { describeError } from "./errors.ts";
 import { leaderboardByKey, schema, type Db, type LeaderboardDef } from "@finals-hq/db";
 import { eq } from "drizzle-orm";
 import { FileFormatError, type FullSnapshot } from "./files.ts";
@@ -41,8 +42,8 @@ export async function importArchives(db: Db, source: DataSource, options: Archiv
     try {
       outcomes.push(await importOne(db, source, lb, file, runId, log));
     } catch (error) {
-      errors.push(`${key}/${file} : ${(error as Error).message}`);
-      log(`[${key}] ERREUR ${(error as Error).message}`);
+      errors.push(`${key}/${file} : ${describeError(error)}`);
+      log(`[${key}] ERREUR ${describeError(error)}`);
     }
   }
   const summary = summarize(runId, outcomes, errors);

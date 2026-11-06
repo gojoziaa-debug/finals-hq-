@@ -8,6 +8,7 @@
  *
  * Code de sortie 1 dès qu'un fichier est rejeté ou qu'un classement échoue : GitHub Actions prévient.
  */
+import { describeError } from "./errors.ts";
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { connect } from "@finals-hq/db";
@@ -79,6 +80,7 @@ async function main(): Promise<number> {
 main()
   .then((code) => process.exit(code))
   .catch((error) => {
-    console.error(`${new Date().toISOString()} FATAL ${(error as Error).stack ?? error}`);
+    console.error(`${new Date().toISOString()} FATAL ${describeError(error)}`);
+    if ((error as Error).stack) console.error((error as Error).stack);
     process.exit(1);
   });
