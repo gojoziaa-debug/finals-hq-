@@ -1,0 +1,93 @@
+name: ingest
+
+# Pushes the collector's snapshots (gojoziaa-debug/finals-hq-data) into Postgres.
+# Triggers: the collector's repository_dispatch (needs DISPATCH_TOKEN on the data repo), a cron
+# fallback 3 minutes after each collector slot, a manual run, and pushes of worker code on sprint branches.
+on:
+  repository_dispatch:
+    types: [data-updated]
+  schedule:
+    - cron: "6,16,26,36,46,56 * * * *"
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "ingest (default) or import-archives (one-off, long)"
+        type: choice
+        options: [ingest, import-archives]
+        default: ingest
+      only:
+        description: "Single leaderboard key (e.g. s12-crossplay); empty = all"
+        required: false
+        default: ""
+  push:
+    branches: ["sprint/**"]
+    paths: ["apps/worker/**", "packages/db/**", "packages/core/**", ".github/workflows/ingest.yml", "pnpm-lock.yaml"]
+
+permissions:
+  contents: read
+
+# One ingestion at a time: files must be applied in order.
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+env:
+  HAS_DATABASE: ${{ secrets.DATABASE_URL != '' }}
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.command == 'import-archives' && 240 || 30 }}
+    steps:
+      - name: Database secrets present?
+        if: env.HAS_DATABASE != 'true'
+        run: |
+          echo "::error::DATABASE_URL is not set in this repository's Actions secrets; nothing to do."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Checkout the data repository (state/ and seasons/ only)
+        uses: actions/checkout@v4
+        with:
+          repository: gojoziaa-debug/finals-hq-data
+          path: data
+          fetch-depth: 1
+          sparse-checkout: |
+            state
+            seasons
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migrate
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm --filter @finals-hq/worker worker migrate
+
+      - name: ${{ inputs.command || 'ingest' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: >
+          pnpm --filter @finals-hq/worker worker ${{ inputs.command || 'ingest' }}
+          --data-root "$GITHUB_WORKSPACE/data"
+          ${{ inputs.only != '' && format('--only {0}', inputs.only) || '' }}
+
+      - name: Status
+        if: always() && env.HAS_DATABASE == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          pnpm --silent --filter @finals-hq/worker worker status > status.json
+          cat status.json
+          {
+            echo '## État de la chaîne de données'
+            echo '```json'
+            cat status.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -9,3 +9,6 @@ coverage/
 *.log
 .vercel
 packages/core/scripts/out/
+# checkout of finals-hq-data used by the worker (CI and local)
+/data/
+/status.json

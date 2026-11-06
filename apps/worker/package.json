@@ -1,0 +1,22 @@
+{
+  "name": "@finals-hq/worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ingestion of finals-hq-data snapshots into Postgres: players, RS events, daily ranks, archives.",
+  "type": "module",
+  "scripts": {
+    "worker": "node --experimental-strip-types src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@finals-hq/core": "workspace:*",
+    "@finals-hq/db": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "postgres": "^4.1.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15"
+  }
+}
