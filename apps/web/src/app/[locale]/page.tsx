@@ -96,17 +96,26 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
 
           <div className="grid grid-cols-1 content-start gap-4 lg:col-span-4">
             {data.top500 && data.top500.score !== null && (
-              <KpiCard
-                label={t("top500")}
-                value={formatNumber(data.top500.score, l)}
-                unit="RS"
-                delta={<DeltaChip value={data.top500.change24h} />}
-                footer={t("top500Hint")}
-                className="border-league-ruby/40"
-              />
+              <Link href="/top-500" className="block rounded-lg hover:ring-1 hover:ring-league-ruby/60">
+                <KpiCard
+                  label={t("top500")}
+                  value={formatNumber(data.top500.score, l)}
+                  unit="RS"
+                  delta={<DeltaChip value={data.top500.change24h} />}
+                  footer={
+                    <>
+                      {t("top500Hint")} <span className="font-semibold text-accent-ink underline">{t("top500More")}</span>
+                    </>
+                  }
+                  className="border-league-ruby/40"
+                />
+              </Link>
             )}
             <section aria-labelledby="movers" className="rounded-lg border border-border bg-surface p-4">
-              <h2 id="movers" className="text-caption uppercase text-text-2">{t("movers")}</h2>
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 id="movers" className="text-caption uppercase text-text-2">{t("movers")}</h2>
+                <Link href="/movers" className="text-body-sm font-semibold text-accent-ink underline">{t("moversAll")}</Link>
+              </div>
               {data.movers.length === 0 ? (
                 <p className="mt-2 text-body-sm text-text-2">{t("moversEmpty")}</p>
               ) : (

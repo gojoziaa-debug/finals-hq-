@@ -153,3 +153,82 @@ export interface FollowedRow {
   d24: number | null;
   d7: number | null;
 }
+
+/* ───────────────────────────── Sprint 4 : ligne top 500, clubs, progressions ───────────────────────────── */
+
+export interface Top500Data {
+  takenAt: string | null;
+  /** RS du 500e, un relevé par heure (le dernier de l'heure), depuis le début de la collecte. */
+  series: Array<{ t: string; score: number }>;
+  latest: { takenAt: string; rank500: number | null; rank1: number | null; last: number | null; rowCount: number; leagueCounts: Array<{ league: number; count: number }> } | null;
+  /** Joueurs autour de la ligne (rangs 495 à 505), au dernier relevé. */
+  around: Array<{ rank: number; name: string | null; score: number; league: number | null; club: string | null; d24: number | null }>;
+}
+
+export interface PastThreshold {
+  seasonId: string;
+  seasonName: string;
+  leaderboardId: number;
+  /** RS final du 500e, du 1er et du dernier de l'archive (null si l'archive a moins de 500 lignes). */
+  rank500: number | null;
+  rank1: number | null;
+  /** Ligue finale du 500e (V : relevée dans l'archive). */
+  league500: number | null;
+  takenAt: string;
+}
+
+export interface ClubRow {
+  tag: string;
+  name: string | null;
+  /** Membres présents dans le top 10 000 du classement ranked en cours. */
+  members: number;
+  total: number;
+  avg: number;
+  bestRank: number;
+  /** Meilleur membre visible (null si tous masqués). */
+  bestName: string | null;
+  bestLeague: number | null;
+  /** Somme des variations 7 j connues, et nombre de membres pour qui elle est connue. */
+  d7: number | null;
+  d7Known: number;
+}
+
+export interface ClubsData {
+  takenAt: string | null;
+  clubs: ClubRow[];
+}
+
+export interface ClubMember {
+  rank: number;
+  name: string | null;
+  score: number;
+  league: number | null;
+  d24: number | null;
+  d7: number | null;
+}
+
+export interface ClubData {
+  tag: string;
+  name: string | null;
+  takenAt: string | null;
+  members: ClubMember[];
+  /** Dernière fois que le club a été vu dans un relevé (table clubs), pour l'état « aucun membre classé ». */
+  lastSeenAt: string | null;
+}
+
+export type MoverWindow = "24h" | "7d" | "season";
+
+export interface MoverRow {
+  rank: number;
+  name: string;
+  score: number;
+  league: number | null;
+  club: string | null;
+  delta: number;
+}
+
+export interface MoversData {
+  takenAt: string | null;
+  historyStart: string | null;
+  rows: MoverRow[];
+}

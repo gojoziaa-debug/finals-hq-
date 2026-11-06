@@ -1,4 +1,5 @@
 import { leaderboardById } from "@finals-hq/db/catalog";
+import { GitCompare } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -16,8 +17,12 @@ import { RsChart } from "@/components/hq/RsChart";
 import { ShareButton } from "@/components/hq/ShareButton";
 import { EmptyState } from "@/components/hq/States";
 import { StickyPlayerBar } from "@/components/hq/StickyPlayerBar";
+import { buttonClasses } from "@/components/hq/Button";
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/cn";
 import { boardPath, boardShortName, DEFAULT_BOARD, LIVE_SEASON, scoreUnit } from "@/lib/boards";
+import { clubPath } from "@/lib/clubs";
+import { compareHref } from "@/lib/compare";
 import { getPlayer } from "@/lib/data";
 import { formatDate, formatNumber, formatRank, type Locale } from "@/lib/format";
 import { league as leagueOf } from "@/lib/league";
@@ -224,6 +229,10 @@ export default async function PlayerPage({ params }: { params: Params }) {
           </div>
           <div className="flex gap-2">
             <FollowButton id={player.id} name={player.name} />
+            <Link href={compareHref([decodeURIComponent(playerSlug(player.name))])} className={cn(buttonClasses.base, buttonClasses.secondary, "px-3")}>
+              <GitCompare aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
+              <span className="sr-only sm:not-sr-only">{t("compare")}</span>
+            </Link>
             <ShareButton title={`${player.name} · FINALS HQ`} compact />
           </div>
         </div>
@@ -233,7 +242,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
             <div className="flex flex-wrap items-center gap-2">
               <LeagueBadge leagueNumber={main.league} size="lg" />
               {club && (
-                <Link href={`${boardPath(DEFAULT_BOARD)}?club=${encodeURIComponent(club)}`} className="rounded-md border border-border px-2.5 py-1 text-body-sm font-semibold hover:bg-surface-raised">
+                <Link href={clubPath(club)} className="rounded-md border border-border px-2.5 py-1 text-body-sm font-semibold hover:bg-surface-raised">
                   [{club}]
                 </Link>
               )}

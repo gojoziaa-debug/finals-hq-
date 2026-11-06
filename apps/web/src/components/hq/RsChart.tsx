@@ -2,6 +2,7 @@
 import { Copy } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { loadECharts, token } from "@/components/charts/echarts";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatNumber, formatRank, formatSigned, type Locale } from "@/lib/format";
 import { league as leagueOf } from "@/lib/league";
@@ -10,22 +11,6 @@ import type { ProfilePoint } from "@/lib/types";
 
 type Metric = "rs" | "rank";
 const RANGES: ChartRange[] = ["24h", "7d", "30d", "season"];
-
-/** Couleur d'un token du design system (triplet RGB dans une variable CSS). */
-function token(name: string, alpha = 1): string {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim().split(/\s+/).join(",");
-  return alpha === 1 ? `rgb(${v})` : `rgba(${v},${alpha})`;
-}
-
-// Chargé une seule fois, seulement sur les pages qui ont une courbe (environ 150 ko compressés hors du bundle initial).
-let echartsPromise: Promise<typeof import("echarts/core")> | null = null;
-function loadECharts() {
-  echartsPromise ??= Promise.all([import("echarts/core"), import("echarts/charts"), import("echarts/components"), import("echarts/renderers")]).then(([core, charts, components, renderers]) => {
-    core.use([charts.LineChart, components.GridComponent, components.TooltipComponent, components.MarkLineComponent, components.MarkPointComponent, components.GraphicComponent, renderers.CanvasRenderer]);
-    return core;
-  });
-  return echartsPromise;
-}
 
 /**
  * Courbe RS (ou rang, axe inversé) du classement ranked en cours. Marches : le RS ne bouge qu'à un match,

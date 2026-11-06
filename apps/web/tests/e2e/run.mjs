@@ -173,6 +173,35 @@ check(!(await page.evaluate(() => document.documentElement.classList.contains("d
 await page.screenshot({ path: join(out, "9-classement-clair-telephone.png") });
 await axe(page, "classement (clair)");
 
+// Sprint 4 : ligne top 500, clubs, comparaison, progressions (téléphone).
+page = await newPage(phone);
+await page.goto(`${BASE}/fr/top-500`);
+const line = await page.locator("text=RS du 500e").first().isVisible();
+check(line, "ligne top 500 : RS du 500e affiché");
+const around500 = await page.locator("li", { hasText: "n° 500" }).count();
+check(around500 >= 1, "ligne top 500 : le 500e est dans « autour de la ligne »");
+await axe(page, "ligne top 500");
+await page.goto(`${BASE}/fr/clubs`);
+const firstClub = page.locator("tbody tr a[href*='/clubs/']").first();
+const firstTag = (await firstClub.innerText()).split("\n")[0];
+const members = Number((await page.locator("tbody tr").first().locator("td").nth(2).innerText()).trim());
+await axe(page, "clubs");
+await firstClub.click();
+await page.waitForURL(/\/clubs\/[^?]+$/);
+const listed = await page.locator("tbody tr").count();
+check(listed === members && members > 0, `club ${firstTag} : ${listed} membres classés listés (classement des clubs : ${members})`);
+await axe(page, "page club");
+await page.goto(`${BASE}/fr/compare?p=GOJO-6255,EkaZo-5318`);
+check((await page.locator("text=Écart au top 500").count()) > 0, "comparaison partagée par URL : deux joueurs chargés");
+await axe(page, "comparaison");
+await page.goto(`${BASE}/fr/players/GOJO-6255`);
+await page.getByRole("link", { name: "Comparer" }).first().click();
+await page.waitForURL(/compare\?p=GOJO-6255/);
+check(true, "bouton Comparer du profil → /compare?p=GOJO-6255");
+await page.goto(`${BASE}/fr/movers?dir=down`);
+check((await page.locator("ol li").count()) > 0, "plus grosses chutes sur 24 h listées");
+await axe(page, "progressions");
+
 // Ordinateur : palette ⌘K.
 const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "dark", deviceScaleFactor: 1 });
 page = await newPage(desktop);

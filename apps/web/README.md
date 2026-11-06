@@ -13,6 +13,12 @@ Le site FINALS HQ : Next.js 15 (App Router), Tailwind avec les tokens du design 
 | `/[locale]/search?q=` | recherche (même moteur que la palette Ctrl K) | dynamique, CDN 60 s sur l'API |
 | `/[locale]/players/[name]` | profil (`GOJO-6255` pour `GOJO#6255`) : en-tête, courbe RS / rang (ECharts chargé à la demande), KPI, activité, répartition, onglet Carrière (archives, records, badges, Legacy) ; états masqué, hors top 10 000, inconnu | ISR 120 s à la demande |
 | `/[locale]/following` | joueurs suivis, liste stockée dans le navigateur (`hq-following`), export / import JSON | statique, état chargé par `/api/following?ids=` |
+| `/[locale]/top-500` | ligne top 500 : RS du 500e (relevé par heure depuis `cutoff_history`), courbe, projection Theil-Sen dès 7 jours de relevés (`src/lib/cutoff.ts`), joueurs des rangs 495 à 505, joueurs suivis face à la ligne, seuils des saisons passées (S3 et après) ; libellé « Ruby » si la ligue 21 apparaît | ISR 60 s |
+| `/[locale]/clubs` | classement des clubs par tag, agrégats des membres présents dans le top 10 000 ; `?q=`, `?sort=total|avg|members|d7|best`, `?show=` | à la demande, données en cache 60 s |
+| `/[locale]/clubs/[tag]` | page club : KPI, membres classés avec leur ligue ; état « aucun membre classé » depuis la table `clubs` | ISR 60 s à la demande |
+| `/[locale]/compare?p=A-0001,B-0002` | comparaison de 2 à 4 joueurs (`src/lib/compare.ts`), meilleur de chaque ligne surligné, courbes superposées ; l'URL se partage | à la demande |
+| `/[locale]/movers?w=24h|7d|season&dir=up|down` | plus fortes progressions et plus grosses chutes de RS (100 premiers) | à la demande, données en cache 60 s |
+| `/[locale]/more` | onglet « Plus » du téléphone | statique |
 | `/[locale]/status` | fraîcheur par classement, passages du worker, taille de la base | ISR 60 s |
 | `/[locale]/styleguide` | tokens et composants dans leurs états | dev et prévisualisations seulement |
 | `/api/boards/[id]` | classement complet en colonnes (≈ 445 Ko, ≈ 160 Ko compressé) | CDN 60 s |
