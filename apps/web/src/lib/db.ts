@@ -22,6 +22,16 @@ export function getDb(): Db {
   return connection.db;
 }
 
+/**
+ * Abandonne la connexion de l'instance. Avec une seule connexion, une requête restée sans réponse (connexion
+ * coupée côté pooler, verrou) bloque toutes les suivantes de l'instance : on repart d'une connexion neuve.
+ */
+export function resetDb(): void {
+  const old = connection;
+  connection = null;
+  if (old) void old.close().catch(() => undefined);
+}
+
 export function hasDatabase(): boolean {
   return Boolean(process.env.DATABASE_URL);
 }
@@ -38,7 +48,10 @@ export class DataTimeoutError extends Error {
 export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new DataTimeoutError(ms)), ms);
+    timer = setTimeout(() => {
+      resetDb();
+      reject(new DataTimeoutError(ms));
+    }, ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
