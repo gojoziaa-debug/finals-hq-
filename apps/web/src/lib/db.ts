@@ -18,8 +18,37 @@ export class DataUnavailableError extends Error {
 export function getDb(): Db {
   const url = process.env.DATABASE_URL;
   if (!url) throw new DataUnavailableError();
-  connection ??= connect(url, { max: 1, connectTimeoutSeconds: 5 });
+  if (!connection) {
+    connection = connect(url, { max: 1, connectTimeoutSeconds: 5 });
+    serialize(connection.db);
+  }
   return connection.db;
+}
+
+/**
+ * Une requête à la fois sur la connexion. postgres.js enchaîne sinon plusieurs requêtes sur la même
+ * connexion sans attendre les réponses (pipelining), et le pooler Supabase en mode transaction peut rester
+ * coincé dessus : la base a répondu mais la réponse n'arrive jamais (incident du 6 nov. 2026).
+ * Toutes les lectures du site passent par db.execute (queryRows).
+ */
+function serialize(db: Db): void {
+  const execute = db.execute.bind(db) as (query: unknown) => Promise<unknown>;
+  let chain: Promise<unknown> = Promise.resolve();
+  (db as unknown as { execute: (query: unknown) => Promise<unknown> }).execute = (query) => {
+    const run = chain.then(() => execute(query));
+    chain = run.catch(() => undefined);
+    return run;
+  };
+}
+
+/**
+ * Abandonne la connexion de l'instance. Avec une seule connexion, une requête restée sans réponse (connexion
+ * coupée côté pooler, verrou) bloque toutes les suivantes de l'instance : on repart d'une connexion neuve.
+ */
+export function resetDb(): void {
+  const old = connection;
+  connection = null;
+  if (old) void old.close().catch(() => undefined);
 }
 
 export function hasDatabase(): boolean {
@@ -38,7 +67,10 @@ export class DataTimeoutError extends Error {
 export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new DataTimeoutError(ms)), ms);
+    timer = setTimeout(() => {
+      resetDb();
+      reject(new DataTimeoutError(ms));
+    }, ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
