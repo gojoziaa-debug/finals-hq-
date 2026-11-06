@@ -72,7 +72,8 @@ jobs:
 
       - name: ${{ inputs.command || 'ingest' }}
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Pooler en mode session (DIRECT_URL) : connexion dédiée au lot, rien de partagé avec le site (incident du 6 nov. 2026).
+          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
         run: >
           pnpm --filter @finals-hq/worker worker ${{ inputs.command || 'ingest' }}
           --data-root "$GITHUB_WORKSPACE/data"
