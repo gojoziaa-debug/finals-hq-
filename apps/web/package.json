@@ -13,12 +13,14 @@
     "e2e": "node tests/e2e/run.mjs"
   },
   "dependencies": {
+    "@finals-hq/core": "workspace:*",
     "@finals-hq/db": "workspace:*",
     "@radix-ui/react-dialog": "1.1.15",
     "@sentry/nextjs": "10.73.0",
     "@tanstack/react-virtual": "3.13.12",
     "cmdk": "1.1.1",
     "drizzle-orm": "^0.45.4",
+    "echarts": "6.0.0",
     "lucide-react": "0.548.0",
     "next": "15.5.29",
     "next-intl": "4.14.9",

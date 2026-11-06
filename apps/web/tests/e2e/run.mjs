@@ -103,9 +103,55 @@ await page.goto(`${BASE}/fr/search?q=GOJO%236255`);
 check(await page.getByRole("link", { name: /GOJO#6255/ }).first().isVisible(), "recherche serveur trouve GOJO#6255");
 await page.getByRole("link", { name: /GOJO#6255/ }).first().click();
 await page.waitForURL(/players\/GOJO-6255/);
-check(await page.getByRole("heading", { name: /GOJO#6255/ }).isVisible(), "profil minimal ouvert depuis la recherche");
-await page.screenshot({ path: join(out, "6-profil-minimal-telephone.png"), fullPage: true });
-await axe(page, "profil");
+check(await page.getByRole("heading", { name: /GOJO#6255/ }).isVisible(), "profil ouvert depuis la recherche");
+await page.locator("#chart-title").waitFor();
+await page.waitForTimeout(1200); // ECharts chargé à la demande
+await page.screenshot({ path: join(out, "6-profil-telephone.png"), fullPage: true });
+await axe(page, "profil (vue d'ensemble)");
+check(await page.locator("#panel-career").isHidden(), "onglet Carrière fermé par défaut");
+await page.getByRole("tab", { name: /Carrière/ }).click();
+check(page.url().endsWith("#career") && (await page.locator("#panel-career").isVisible()), "onglet Carrière ouvert, ancre #career");
+await page.screenshot({ path: join(out, "6b-profil-carriere-telephone.png"), fullPage: true });
+await axe(page, "profil (carrière)");
+await page.getByRole("tab", { name: /Vue d'ensemble/ }).click();
+await page.getByRole("button", { name: "Suivre" }).first().click();
+check((await page.getByRole("button", { name: "Suivi" }).count()) >= 1, "bouton Suivre → Suivi");
+await page.getByRole("link", { name: "Suivi" }).last().click();
+await page.waitForURL(/following/);
+await page.getByRole("link", { name: /GOJO#6255/ }).waitFor({ timeout: 10_000 });
+const followedRank = await page.locator("tbody tr").first().locator("td").first().filter({ hasText: /n°/ }).waitFor({ timeout: 10_000 }).then(() => true, async () => {
+  console.log(await page.locator("main").innerText());
+  return false;
+});
+check(followedRank, "page Suivi : GOJO#6255 avec son rang");
+await page.screenshot({ path: join(out, "6c-suivi-telephone.png"), fullPage: true });
+await axe(page, "suivi");
+
+// Critère du sprint 3 : cinq joueurs au hasard dans trois ligues, rang et RS identiques au classement (aucune donnée inventée).
+const board = await (await page.request.get(`${BASE}/api/boards/1500`)).json();
+const byTier = { platinumLow: [], platinumHigh: [], diamond: [] };
+board.rows.name.forEach((name, i) => {
+  if (!name) return;
+  const lg = board.rows.league[i];
+  const key = lg >= 17 ? "diamond" : lg >= 15 ? "platinumHigh" : "platinumLow";
+  byTier[key].push(i);
+});
+const picks = [...byTier.diamond.sort(() => Math.random() - 0.5).slice(0, 2), ...byTier.platinumHigh.sort(() => Math.random() - 0.5).slice(0, 2), ...byTier.platinumLow.sort(() => Math.random() - 0.5).slice(0, 1)];
+for (const i of picks) {
+  const name = board.rows.name[i];
+  const m = /^(.*)#(\d{4})$/.exec(name);
+  const slug = encodeURIComponent(m ? `${m[1]}-${m[2]}` : name);
+  const res = await page.goto(`${BASE}/fr/players/${slug}`);
+  const text = await page.locator("main header").first().innerText();
+  const rank = `n° ${board.rows.rank[i].toLocaleString("fr-FR").replace(/[\u00a0\u202f ]/g, "\u202f")}`;
+  const score = board.rows.score[i].toLocaleString("fr-FR").replace(/[\u00a0\u202f ]/g, "\u202f");
+  const norm = (x) => x.replace(/[\u00a0\u202f ]/g, "\u202f");
+  check(res.status() === 200 && norm(text).includes(norm(rank)) && norm(text).includes(norm(score)), `profil ${name} (ligue ${board.rows.league[i]}) : ${rank}, ${score} RS comme au classement`);
+}
+
+// Hors du top 10 000 et inconnu.
+await page.goto(`${BASE}/fr/players/Personne-0000`);
+check(await page.getByText("Joueur introuvable").isVisible(), "profil inconnu : état « introuvable »");
 
 await page.goto(`${BASE}/fr/status`);
 check(await page.getByRole("heading", { name: "État des données" }).isVisible(), "page d'état");

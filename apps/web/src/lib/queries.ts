@@ -6,8 +6,24 @@
  */
 import { queryRows, type Db } from "@finals-hq/db";
 import { leaderboardById, LEADERBOARDS, type LeaderboardDef } from "@finals-hq/db/catalog";
-import { sql } from "drizzle-orm";
-import type { BoardPayload, FreshnessInfo, HomeData, PlayerData, SearchResult, StatusData } from "./types";
+import { sql, type SQL } from "drizzle-orm";
+import type { BoardPayload, FollowedRow, FreshnessInfo, HomeData, PlayerData, ProfileLive, ProfilePoint, SearchResult, StatusData } from "./types";
+
+/** Classement ranked crossplay de la saison en cours (s12-crossplay = 1500), sans dépendre de lib/boards côté tests. */
+export const DEFAULT_LIVE_BOARD_ID = LEADERBOARDS.find((lb) => lb.isLive && lb.kind === "ranked" && lb.platform === "crossplay")!.id;
+/** Taille maximale de la liste de suivi (stockée dans le navigateur). */
+export const MAX_FOLLOWED = 50;
+
+/**
+ * Rang de la ligne c dans l'ordre exact du tableau (score, puis rang stocké, puis identifiant) : à égalité de score,
+ * le profil, la recherche et le suivi donnent le même rang que la ligne du classement. Deux comptes séparés
+ * pour que chacun reste une lecture de l'index (leaderboard_id, score DESC, rank).
+ */
+function rankOf(board: SQL): SQL {
+  return sql`((SELECT count(*) FROM leaderboard_current o WHERE o.leaderboard_id = ${board} AND o.score > c.score)
+    + (SELECT count(*) FROM leaderboard_current o WHERE o.leaderboard_id = ${board} AND o.score = c.score
+         AND (o.rank < c.rank OR (o.rank = c.rank AND o.player_id < c.player_id))) + 1)::int`;
+}
 
 const iso = (v: Date | string | null | undefined): string | null => (v === null || v === undefined ? null : new Date(v).toISOString());
 const num = (v: number | string | null | undefined): number | null => (v === null || v === undefined ? null : Number(v));
@@ -127,7 +143,7 @@ export async function searchPlayers(db: Db, rawQuery: string, liveBoardId: numbe
         )
         SELECT m.id, m.name, m.former, c.score, c.league_number AS league, c.club_tag AS club,
                CASE WHEN c.player_id IS NULL THEN NULL ELSE (
-                 SELECT count(*)::int + 1 FROM leaderboard_current o WHERE o.leaderboard_id = ${liveBoardId} AND o.score > c.score
+                 SELECT ${rankOf(sql`${liveBoardId}`)}
                ) END AS rank
         FROM matches m
         LEFT JOIN leaderboard_current c ON c.leaderboard_id = ${liveBoardId} AND c.player_id = m.id
@@ -234,8 +250,105 @@ export async function loadHome(db: Db, lb: LeaderboardDef): Promise<HomeData> {
   };
 }
 
-/** Profil minimal (le profil complet arrive au sprint 3). null si inconnu ; nom remplacé si masqué. */
-export async function loadPlayer(db: Db, candidates: string[]): Promise<PlayerData | null> {
+const dayString = (v: Date | string): string => (typeof v === "string" ? v.slice(0, 10) : v.toISOString().slice(0, 10));
+
+/** Jour UTC AAAA-MM-JJ + n jours. */
+export function addDays(day: string, n: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Historique d'un joueur sur un classement en cours : clôtures quotidiennes compactées (player_history),
+ * événements des 8 derniers jours (rs_events), dernière ligne de coupe (cutoff_history).
+ * Les clôtures ne servent qu'avant le premier événement gardé : après, chaque changement est déjà un événement.
+ */
+export async function loadLive(db: Db, playerId: string, leaderboardId: number, current: { score: number; rank: number; league: number | null } | null): Promise<ProfileLive> {
+  const [meta, histRows, events, cut] = await Promise.all([
+    queryRows<{ start: Date | string | null; t: Date | string | null }>(
+      db,
+      sql`SELECT history_start_day AS start,
+                 (SELECT max(taken_at) FROM snapshots WHERE leaderboard_id = ${leaderboardId} AND status = 'applied') AS t
+          FROM leaderboards WHERE id = ${leaderboardId}`,
+    ),
+    queryRows<{ scores: Array<number | null>; ranks: Array<number | null>; leagues: Array<number | null> }>(
+      db,
+      sql`SELECT scores, ranks, league_numbers AS leagues FROM player_history WHERE leaderboard_id = ${leaderboardId} AND player_id = ${playerId}::bigint`,
+    ),
+    queryRows<{ taken_at: Date | string; score: number; delta: number | null; rank: number; league: number | null }>(
+      db,
+      sql`SELECT taken_at, score, score_delta AS delta, rank, league_number AS league
+          FROM rs_events WHERE leaderboard_id = ${leaderboardId} AND player_id = ${playerId}::bigint ORDER BY taken_at`,
+    ),
+    queryRows<{ taken_at: Date | string; r500: number | null; last: number | null; r1: number | null; row_count: number; league_counts: Record<string, number> | null }>(
+      db,
+      sql`SELECT taken_at, rank_500_score AS r500, last_score AS last, rank_1_score AS r1, row_count, league_counts
+          FROM cutoff_history WHERE leaderboard_id = ${leaderboardId} ORDER BY taken_at DESC LIMIT 1`,
+    ),
+  ]);
+  const historyStart = meta[0]?.start ? dayString(meta[0].start) : null;
+  const takenAt = iso(meta[0]?.t);
+  const firstEventAt = events[0] ? new Date(events[0].taken_at).getTime() : Infinity;
+
+  const series: ProfilePoint[] = [];
+  const activity = new Map<string, number>();
+  const h = histRows[0];
+  if (h && historyStart) {
+    let previous: number | null = null;
+    h.scores.forEach((score, i) => {
+      const day = addDays(historyStart, i);
+      const t = `${day}T23:59:59.000Z`;
+      const s = num(score);
+      // Jour actif d'après les clôtures (un seul changement compté) : complété par les événements plus bas.
+      if (s !== null && previous !== null && s !== previous) activity.set(day, 1);
+      if (s !== null) previous = s;
+      if (new Date(t).getTime() < firstEventAt) series.push({ t, score: s, rank: num(h.ranks[i]), league: num(h.leagues[i]), kind: "close" });
+    });
+  }
+  const eventDays = new Map<string, number>();
+  for (const e of events) {
+    const t = iso(e.taken_at)!;
+    series.push({ t, score: Number(e.score), rank: Number(e.rank), league: num(e.league), kind: "event" });
+    // score_delta null = première apparition sur le classement, pas un match.
+    if (e.delta !== null && Number(e.delta) !== 0) eventDays.set(t.slice(0, 10), (eventDays.get(t.slice(0, 10)) ?? 0) + 1);
+  }
+  for (const [day, n] of eventDays) activity.set(day, n);
+  if (current && takenAt) {
+    const last = series[series.length - 1];
+    if (!last || new Date(last.t).getTime() < new Date(takenAt).getTime()) series.push({ t: takenAt, score: current.score, rank: current.rank, league: current.league, kind: "now" });
+  }
+  // Les clôtures ne descendent pas sous la seconde : un événement peut tomber avant la clôture du même jour.
+  series.sort((a, b) => a.t.localeCompare(b.t));
+
+  const c = cut[0];
+  return {
+    leaderboardId,
+    takenAt,
+    historyStart,
+    series,
+    activity: [...activity.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([day, changes]) => ({ day, changes })),
+    cutoff: c
+      ? {
+          takenAt: iso(c.taken_at)!,
+          rank500: num(c.r500),
+          last: num(c.last),
+          rank1: num(c.r1),
+          rowCount: c.row_count,
+          leagueCounts: Object.entries(c.league_counts ?? {})
+            .filter(([k]) => k !== "unknown")
+            .map(([k, count]) => ({ league: Number(k), count }))
+            .sort((a, b) => a.league - b.league),
+        }
+      : null,
+  };
+}
+
+/**
+ * Profil complet : identité, classements en cours, saisons passées (archives), anciens pseudos et historique
+ * du classement ranked en cours. null si inconnu ; masqué : rien d'autre que le drapeau.
+ */
+export async function loadPlayer(db: Db, candidates: string[], liveBoardId: number = DEFAULT_LIVE_BOARD_ID): Promise<PlayerData | null> {
   if (candidates.length === 0) return null;
   const [p] = await queryRows<{ id: string | number; embark_name: string; steam_name: string | null; psn_name: string | null; xbox_name: string | null; hidden: boolean; first_seen_at: Date | string; last_seen_at: Date | string }>(
     db,
@@ -247,23 +360,41 @@ export async function loadPlayer(db: Db, candidates: string[]): Promise<PlayerDa
   if (!p) return null;
   const id = String(p.id);
   if (p.hidden) {
-    return { id, name: "", hidden: true, platforms: { steam: null, psn: null, xbox: null }, firstSeenAt: iso(p.first_seen_at)!, lastSeenAt: iso(p.last_seen_at)!, current: [], seasons: [], formerNames: [] };
+    return { id, name: "", hidden: true, platforms: { steam: null, psn: null, xbox: null }, firstSeenAt: iso(p.first_seen_at)!, lastSeenAt: iso(p.last_seen_at)!, current: [], seasons: [], formerNames: [], live: null };
   }
-  const current = await queryRows<{ leaderboard_id: number; score: number; league: number | null; club: string | null; d24: number | null; d7: number | null; updated_at: Date | string; rank: number }>(
-    db,
-    sql`SELECT c.leaderboard_id, c.score, c.league_number AS league, c.club_tag AS club, c.delta_24h AS d24, c.delta_7d AS d7, c.updated_at,
-               (SELECT count(*)::int + 1 FROM leaderboard_current o WHERE o.leaderboard_id = c.leaderboard_id AND o.score > c.score) AS rank
-        FROM leaderboard_current c WHERE c.player_id = ${id}::bigint ORDER BY c.leaderboard_id`,
-  );
-  const seasons = await queryRows<{ leaderboard_id: number; final_rank: number; final_score: number; league: number | null; club: string | null }>(
-    db,
-    sql`SELECT leaderboard_id, final_rank, final_score, final_league_number AS league, club_tag AS club
-        FROM season_results WHERE player_id = ${id}::bigint ORDER BY leaderboard_id DESC`,
-  );
-  const former = await queryRows<{ name: string; last_seen_at: Date | string }>(
-    db,
-    sql`SELECT name, last_seen_at FROM player_names WHERE player_id = ${id}::bigint AND kind = 'embark' ORDER BY last_seen_at DESC LIMIT 10`,
-  );
+  const [current, seasons, former] = await Promise.all([
+    queryRows<{ leaderboard_id: number; score: number; league: number | null; club: string | null; d24: number | null; d7: number | null; updated_at: Date | string; last_change_at: Date | string; first_seen_at: Date | string; rank: number }>(
+      db,
+      sql`SELECT c.leaderboard_id, c.score, c.league_number AS league, c.club_tag AS club, c.delta_24h AS d24, c.delta_7d AS d7, c.updated_at, c.last_change_at, c.first_seen_at,
+                 ${rankOf(sql`c.leaderboard_id`)} AS rank
+          FROM leaderboard_current c WHERE c.player_id = ${id}::bigint ORDER BY c.leaderboard_id`,
+    ),
+    queryRows<{ leaderboard_id: number; final_rank: number; final_score: number; league: number | null; club: string | null }>(
+      db,
+      sql`SELECT leaderboard_id, final_rank, final_score, final_league_number AS league, club_tag AS club
+          FROM season_results WHERE player_id = ${id}::bigint ORDER BY leaderboard_id DESC`,
+    ),
+    queryRows<{ name: string; last_seen_at: Date | string }>(
+      db,
+      sql`SELECT name, last_seen_at FROM player_names WHERE player_id = ${id}::bigint AND kind = 'embark' ORDER BY last_seen_at DESC LIMIT 10`,
+    ),
+  ]);
+  const currentRows = current
+    .filter((c) => leaderboardById(c.leaderboard_id))
+    .map((c) => ({
+      leaderboardId: c.leaderboard_id,
+      rank: c.rank,
+      score: c.score,
+      league: num(c.league),
+      club: c.club || null,
+      d24: num(c.d24),
+      d7: num(c.d7),
+      updatedAt: iso(c.updated_at)!,
+      lastChangeAt: iso(c.last_change_at)!,
+      firstSeenAt: iso(c.first_seen_at)!,
+    }));
+  const main = currentRows.find((c) => c.leaderboardId === liveBoardId) ?? null;
+  const live = await loadLive(db, id, liveBoardId, main);
   return {
     id,
     name: p.embark_name,
@@ -271,12 +402,30 @@ export async function loadPlayer(db: Db, candidates: string[]): Promise<PlayerDa
     platforms: { steam: p.steam_name, psn: p.psn_name, xbox: p.xbox_name },
     firstSeenAt: iso(p.first_seen_at)!,
     lastSeenAt: iso(p.last_seen_at)!,
-    current: current
-      .filter((c) => leaderboardById(c.leaderboard_id))
-      .map((c) => ({ leaderboardId: c.leaderboard_id, rank: c.rank, score: c.score, league: num(c.league), club: c.club || null, d24: num(c.d24), d7: num(c.d7), updatedAt: iso(c.updated_at)! })),
+    current: currentRows,
     seasons: seasons
       .filter((s) => leaderboardById(s.leaderboard_id))
       .map((s) => ({ leaderboardId: s.leaderboard_id, rank: s.final_rank, score: s.final_score, league: num(s.league), club: s.club || null })),
     formerNames: former.map((f) => ({ name: f.name, lastSeenAt: iso(f.last_seen_at)! })),
+    live,
   };
+}
+
+/** Joueurs suivis (page Suivi) : état au dernier relevé du classement ranked en cours. Masqués et inconnus exclus. */
+export async function loadFollowed(db: Db, ids: string[], liveBoardId: number = DEFAULT_LIVE_BOARD_ID): Promise<FollowedRow[]> {
+  const clean = [...new Set(ids.filter((i) => /^\d{1,18}$/.test(i)))].slice(0, MAX_FOLLOWED);
+  if (clean.length === 0) return [];
+  const rows = await queryRows<{ id: string | number; name: string; score: number | null; league: number | null; club: string | null; d24: number | null; d7: number | null; rank: number | null }>(
+    db,
+    sql`SELECT p.id, p.embark_name AS name, c.score, c.league_number AS league, c.club_tag AS club, c.delta_24h AS d24, c.delta_7d AS d7,
+               CASE WHEN c.player_id IS NULL THEN NULL ELSE (
+                 SELECT ${rankOf(sql`${liveBoardId}`)}
+               ) END AS rank
+        FROM players p
+        LEFT JOIN leaderboard_current c ON c.leaderboard_id = ${liveBoardId} AND c.player_id = p.id
+        WHERE p.id IN (${sql.join(clean.map((c) => sql`${c}::bigint`), sql`, `)}) AND p.hidden_at IS NULL AND p.merged_into IS NULL`,
+  );
+  return rows
+    .map((r) => ({ id: String(r.id), name: r.name, rank: num(r.rank), score: num(r.score), league: num(r.league), club: r.club || null, d24: num(r.d24), d7: num(r.d7) }))
+    .sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity) || a.name.localeCompare(b.name));
 }

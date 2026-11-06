@@ -7,7 +7,11 @@
     "searchTitle": "Search · FINALS HQ",
     "statusTitle": "Data status · FINALS HQ",
     "leaderboardsTitle": "All leaderboards · FINALS HQ",
-    "playerTitle": "{name} · FINALS HQ"
+    "playerTitle": "{name} · FINALS HQ",
+    "playerDescription": "{name}: {rank} on the {season} Ranked Cashout leaderboard, {score} RS, {league}. Chart, activity and career on FINALS HQ.",
+    "playerDescriptionNone": "{name}: chart, activity and career in THE FINALS public leaderboards, on FINALS HQ.",
+    "hiddenTitle": "Hidden profile · FINALS HQ",
+    "followingTitle": "Following · FINALS HQ"
   },
   "common": {
     "skip": "Skip to content",
@@ -39,7 +43,8 @@
     "status": "Status",
     "styleguide": "Styleguide",
     "primary": "Main navigation",
-    "tabs": "Quick navigation"
+    "tabs": "Quick navigation",
+    "following": "Following"
   },
   "units": {
     "rs": "RS",
@@ -169,7 +174,6 @@
     "archive": "archive"
   },
   "player": {
-    "minimal": "Full profile (charts, career, Rating) ships in sprint 3. Here are the essentials of the latest snapshot.",
     "current": "Live leaderboards",
     "seasons": "Past seasons",
     "former": "Former names",
@@ -179,7 +183,8 @@
     "hidden": "Profile hidden at the player's request.",
     "notFound": "Player not found",
     "notFoundHint": "No player with this name was seen in public leaderboards. Check the name and its 4 digits.",
-    "firstSeen": "first seen on {date}"
+    "firstSeen": "first seen on {date}",
+    "searchInstead": "Search for a similar name"
   },
   "errors": {
     "title": "Data temporarily unavailable",
@@ -187,5 +192,145 @@
     "notFound": "Page not found",
     "notFoundBody": "This address does not match any FINALS HQ page.",
     "home": "Back to home"
+  },
+  "profile": {
+    "tabs": "Profile sections",
+    "tab": {
+      "overview": "Overview",
+      "career": "Career"
+    },
+    "firstSeen": "tracked since {date}",
+    "noPlatform": "platforms unknown",
+    "noPlatformHint": "The leaderboard gives no Steam, PSN or Xbox name for this player.",
+    "rankLabel": "{rank} on the {board} leaderboard",
+    "topPercent": "top {pct}% of the top 10,000",
+    "board": "{board}",
+    "takenAt": "snapshot",
+    "activeRecently": "active less than an hour ago",
+    "inactive": "{days, plural, one {inactive for # day} other {inactive for # days}}",
+    "window": {
+      "24h": "over 24 hours",
+      "7d": "over 7 days",
+      "30d": "over 30 days",
+      "7dShort": "7d"
+    },
+    "since": "since {date}",
+    "range": {
+      "24h": "24h",
+      "7d": "7d",
+      "30d": "30d",
+      "season": "Season"
+    },
+    "metric": {
+      "rs": "RS",
+      "rank": "Rank"
+    },
+    "rangeLabel": "Period",
+    "metricLabel": "Measure",
+    "chartRs": "{delta} RS {when}",
+    "chartFlat": "RS steady {when}",
+    "chartRankUp": "+{places} places {when}",
+    "chartRankDown": "−{places} places {when}",
+    "chartRankFlat": "Rank steady {when}",
+    "chartBuilding": "History building since {date}",
+    "chartEmpty": "Not enough snapshots for this period yet (first seen {date}). Come back tomorrow, or pick “Season”.",
+    "annotPeak": "peak",
+    "annotTop500": "entered top 500",
+    "top500Line": "top 500 line ({value})",
+    "top500Rank": "top 500 line",
+    "absent": "outside the top 10,000",
+    "closeNote": "daily close",
+    "copyImage": "Copy image",
+    "copied": "Image copied",
+    "downloaded": "Image downloaded",
+    "source": "data api.the-finals-leaderboard.com",
+    "tableCaption": "Latest chart snapshots",
+    "colTime": "Snapshot",
+    "colRank": "Rank",
+    "kpis": "Indicators",
+    "kpiPeak": "Peak",
+    "kpiPeakFooter": "on {date} · tracked since {since}",
+    "kpiDays": "Days played",
+    "kpiDays7": "over the last 7 days",
+    "kpiDaysObserved": "{count, plural, one {# day observed out of 7} other {# days observed out of 7}}",
+    "kpiTop500": "Gap to top 500",
+    "inTop500": "in the top 500",
+    "kpiTop500Footer": "line at {value} RS",
+    "kpiRank7": "Rank 7d",
+    "ratingChip": "calibrating",
+    "ratingTitle": "FINALS HQ Rating",
+    "ratingBody": "The score out of 99 (level, peak, momentum, consistency, legacy) appears after a week of real data, once the population references are measured. Method in phase D.",
+    "activity": "Activity",
+    "activityHint": "Days your RS changed (one change can bundle several matches between two snapshots). Collected since {date}.",
+    "heatLabel": "Activity calendar",
+    "heatDay": "{date}: {count, plural, =0 {no RS change} one {# RS change} other {# RS changes}}",
+    "heatBefore": "{date}: before collection started",
+    "heatNoData": "before collection",
+    "less": "less",
+    "more": "more",
+    "where": "Where you stand",
+    "entry": "To get in: {value} RS",
+    "whereHint": "Top 10,000 players per division at the last snapshot; the league comes from the API. Your division is circled.",
+    "youAreHere": "your division:",
+    "otherBoards": "Other live leaderboards",
+    "formerUntil": "until {date}",
+    "notInTopBody": "Public leaderboards stop at 10,000 players ({value} RS at the last snapshot). Beyond that, nobody's score is visible.",
+    "lastSeen": "Last seen: {date}, {rank}, {score} RS.",
+    "neverSeenLive": "Not seen on the {season} ranked leaderboard since collection started ({date}).",
+    "followToKnow": "Follow this player: they will show up on your Following page as soon as they get in.",
+    "places": "{count, plural, one {place} other {places}}"
+  },
+  "career": {
+    "records": "Records",
+    "bestRank": "Best final rank",
+    "bestScore": "Best final RS",
+    "bestLeague": "Best league",
+    "scoreNotComparable": "season-specific scale",
+    "badges": "Badges",
+    "badgeFirst": "{count, plural, one {#1 of a season} other {#1 of # seasons}}",
+    "badgeTop100": "{count, plural, one {top 100 · # season} other {top 100 · # seasons}}",
+    "badgeTop500": "{count, plural, one {top 500 · # season} other {top 500 · # seasons}}",
+    "badgeRuby": "{count, plural, one {Ruby · # season} other {Ruby · # seasons}}",
+    "badgeSeasons": "{count, plural, one {# ranked season} other {# ranked seasons}}",
+    "legacy": "Legacy",
+    "legacyExplain": "{points} career points: 100 per season finished in the top 500 (+40 top 100, +60 #1), 60 in Diamond, 30 in Platinum, 10 for being in the top 10,000.",
+    "legacyScale": "Legacy = 100 × (1 − e^(−points/250)): every season counts, with diminishing returns. It is 5% of the upcoming Rating.",
+    "legacyPoints": "+{points} legacy pts",
+    "timeline": "Seasons",
+    "noLeagues": "no leagues",
+    "noLeaguesHint": "Betas, S1 and S2: no comparable league system, the season counts as a presence.",
+    "noRanked": "Not in the top 10,000 of this season's ranked leaderboard.",
+    "coverage": "Finished seasons from the public archives ({archived} ranked leaderboards). Before 4-digit names, a season is linked only when the name matches exactly.",
+    "empty": "No past season in the archives",
+    "emptyHint": "This player does not appear on any finished leaderboard under this name (top 10,000 of each season)."
+  },
+  "follow": {
+    "follow": "Follow",
+    "following": "Following",
+    "hint": "Add this player to your Following page (stored in your browser).",
+    "full": "List full (50 players) or browser storage refused."
+  },
+  "share": {
+    "share": "Share",
+    "copied": "Link copied",
+    "hint": "Copy the profile link"
+  },
+  "following": {
+    "title": "Followed players",
+    "intro": "Your list lives in your browser: no account, nothing stored on our side. Export it to use it on another device.",
+    "empty": "You're not following anyone yet",
+    "emptyHint": "Open a profile and tap ☆ Follow: the player will show up here with their rank and today's change.",
+    "findPlayer": "Find a player",
+    "colPlayer": "Player",
+    "remove": "Remove",
+    "removeName": "Stop following {name}",
+    "notInTop": "outside the top 10,000",
+    "gone": "profile unavailable",
+    "loadError": "Could not load the players. Try again in a moment.",
+    "stored": "{count, plural, one {# player stored in your browser} other {# players stored in your browser}} (50 max).",
+    "export": "Export",
+    "import": "Import",
+    "imported": "{count, plural, =0 {No new player} one {# player added} other {# players added}}",
+    "importError": "Unreadable file: pick a FINALS HQ export."
   }
 }

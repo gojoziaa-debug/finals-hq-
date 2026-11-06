@@ -78,6 +78,56 @@ export interface HomeData {
   movers: Array<{ name: string; d7: number; score: number; league: number | null; rank: number }>;
 }
 
+export interface PlayerCurrent {
+  leaderboardId: number;
+  rank: number;
+  score: number;
+  league: number | null;
+  club: string | null;
+  d24: number | null;
+  d7: number | null;
+  updatedAt: string;
+  /** Dernier changement de score observé sur ce classement. */
+  lastChangeAt: string;
+  /** Première apparition sur ce classement. */
+  firstSeenAt: string;
+}
+
+export interface PlayerSeason {
+  leaderboardId: number;
+  rank: number;
+  score: number;
+  league: number | null;
+  club: string | null;
+}
+
+/**
+ * Un point de la courbe du classement ranked en cours. close = clôture quotidienne (player_history, à 23:59:59 UTC),
+ * event = changement de score relevé (rs_events, 8 jours), now = état au dernier relevé (le rang bouge même sans match).
+ * score null = absent du top 10 000 ce jour-là (trou, jamais interpolé).
+ */
+export interface ProfilePoint {
+  t: string;
+  score: number | null;
+  rank: number | null;
+  league: number | null;
+  kind: "close" | "event" | "now";
+}
+
+export interface ProfileLive {
+  leaderboardId: number;
+  /** Heure du dernier relevé appliqué du classement. */
+  takenAt: string | null;
+  /** Premier jour de clôture quotidienne du classement (début de la collecte), AAAA-MM-JJ. */
+  historyStart: string | null;
+  /** Points dans l'ordre chronologique. */
+  series: ProfilePoint[];
+  /** Changements de score par jour UTC (AAAA-MM-JJ), depuis le début de la collecte. */
+  activity: Array<{ day: string; changes: number }>;
+  /** Dernier relevé de la ligne de coupe : 500e, 10 000e, 1er, joueurs par ligue. */
+  cutoff: { takenAt: string; rank500: number | null; last: number | null; rank1: number | null; rowCount: number; leagueCounts: Array<{ league: number; count: number }> } | null;
+}
+
 export interface PlayerData {
   id: string;
   name: string;
@@ -85,7 +135,21 @@ export interface PlayerData {
   platforms: { steam: string | null; psn: string | null; xbox: string | null };
   firstSeenAt: string;
   lastSeenAt: string;
-  current: Array<{ leaderboardId: number; rank: number; score: number; league: number | null; club: string | null; d24: number | null; d7: number | null; updatedAt: string }>;
-  seasons: Array<{ leaderboardId: number; rank: number; score: number; league: number | null; club: string | null }>;
+  current: PlayerCurrent[];
+  seasons: PlayerSeason[];
   formerNames: Array<{ name: string; lastSeenAt: string }>;
+  /** Historique du classement ranked en cours ; null pour un profil masqué. */
+  live: ProfileLive | null;
+}
+
+export interface FollowedRow {
+  id: string;
+  name: string;
+  /** null = hors du top 10 000 au dernier relevé. */
+  rank: number | null;
+  score: number | null;
+  league: number | null;
+  club: string | null;
+  d24: number | null;
+  d7: number | null;
 }

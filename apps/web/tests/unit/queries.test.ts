@@ -3,7 +3,7 @@ import { leaderboardByKey } from "@finals-hq/db/catalog";
 import { createTestDb, type TestDb } from "@finals-hq/db/test";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { loadBoard, loadFreshness, loadHome, loadPlayer, loadStatus, searchPlayers } from "../../src/lib/queries";
+import { loadBoard, loadFollowed, loadFreshness, loadHome, loadPlayer, loadStatus, searchPlayers } from "../../src/lib/queries";
 
 const LIVE = leaderboardByKey("s12-crossplay")!;
 const ARCHIVE = leaderboardByKey("s11-crossplay")!;
@@ -47,6 +47,12 @@ async function seed(db: Db): Promise<void> {
   await db.execute(sql`INSERT INTO season_results (player_id, snapshot_id, final_score, final_rank, leaderboard_id, final_league_number) VALUES
     (${ids.get("Fictif-Delta#0005")}::bigint, ${archive!.id}, 60000, 1, ${ARCHIVE.id}, 21),
     (${ids.get("Fictif-Alpha#0001")}::bigint, ${archive!.id}, 41000, 2, ${ARCHIVE.id}, 18)`);
+  // Historique fictif d'Alpha : clôture du 5 nov., puis deux changements de score le 6.
+  await db.execute(sql`UPDATE leaderboards SET history_start_day = '2026-11-05' WHERE id = ${LIVE.id}`);
+  await db.execute(sql`INSERT INTO player_history (player_id, leaderboard_id, scores, ranks, league_numbers) VALUES (${ids.get("Fictif-Alpha#0001")}::bigint, ${LIVE.id}, '{49500}', '{3}', '{20}')`);
+  await db.execute(sql`INSERT INTO rs_events (player_id, taken_at, score, score_delta, rank, snapshot_id, leaderboard_id, league_number) VALUES
+    (${ids.get("Fictif-Alpha#0001")}::bigint, '2026-11-06T08:00:00Z', 49800, 300, 2, ${snap!.id}, ${LIVE.id}, 20),
+    (${ids.get("Fictif-Alpha#0001")}::bigint, '2026-11-06T09:00:00Z', 50000, 200, 2, ${snap!.id}, ${LIVE.id}, 20)`);
   await db.execute(sql`INSERT INTO cutoff_history (taken_at, snapshot_id, row_count, rank_1_score, rank_500_score, last_score, leaderboard_id, league_counts) VALUES
     ('2026-11-05T09:00:00Z', ${snap!.id}, 4, 52000, 45000, 39000, ${LIVE.id}, '{"16":1,"17":1,"20":2}'),
     ('2026-11-06T09:30:00Z', ${snap!.id}, 4, 52000, 45250, 39000, ${LIVE.id}, '{"16":1,"17":1,"20":2}')`);
@@ -109,9 +115,25 @@ describe("read queries (PGlite, synthetic data)", () => {
     expect(p!.current[0]).toMatchObject({ leaderboardId: LIVE.id, rank: 2, score: 50_000 });
     expect(p!.seasons[0]).toMatchObject({ leaderboardId: ARCHIVE.id, rank: 2, league: 18 });
     expect(p!.formerNames[0]!.name).toBe("AncienNom#0001");
+    expect(p!.current[0]).toMatchObject({ lastChangeAt: "2026-11-06T09:30:00.000Z" });
+    expect(p!.live!.historyStart).toBe("2026-11-05");
+    expect(p!.live!.series.map((x) => [x.kind, x.score, x.rank])).toEqual([["close", 49_500, 3], ["event", 49_800, 2], ["event", 50_000, 2], ["now", 50_000, 2]]);
+    expect(p!.live!.activity).toEqual([{ day: "2026-11-06", changes: 2 }]);
+    expect(p!.live!.cutoff).toMatchObject({ rank500: 45_250, last: 39_000, rowCount: 4 });
+    const charlie = await loadPlayer(t.db, ["Fictif-Delta#0005"]);
+    expect(charlie!.current).toEqual([]);
+    expect(charlie!.live!.series).toEqual([]);
     const hidden = await loadPlayer(t.db, ["Masque#0004"]);
     expect(hidden).toMatchObject({ hidden: true, name: "", current: [] });
     expect(await loadPlayer(t.db, ["Personne#9999"])).toBeNull();
+  });
+
+  it("loads followed players by id, never a hidden one", async () => {
+    const ids = (await queryRows<{ id: string; embark_name: string }>(t.db, sql`SELECT id::text, embark_name FROM players`)).map((r) => r.id);
+    const rows = await loadFollowed(t.db, [...ids, "abc", "999999"]);
+    expect(rows.map((r) => r.name)).toEqual(["Fictif-Bravo#0002", "Fictif-Alpha#0001", "Fictif-Charlie#0003", "Fictif-Delta#0005"]);
+    expect(rows[3]).toMatchObject({ rank: null, score: null });
+    expect(await loadFollowed(t.db, [])).toEqual([]);
   });
 
   it("reports freshness and status", async () => {
@@ -147,5 +169,21 @@ describe.skipIf(!process.env.LOCAL_DATABASE_URL)("read queries on a real local d
     expect(Math.max(...times)).toBeLessThan(100);
     const gojo = await searchPlayers(db, "GOJO#6255", LIVE.id);
     expect(gojo[0]?.name).toBe("GOJO#6255");
+  });
+
+  it("loads full profiles from the real data under 150 ms on the database side", async () => {
+    const db = conn!.db;
+    const times: number[] = [];
+    for (const name of ["GOJO#6255", "EkaZo#5318", "Darling#8062", "NV#8812"]) {
+      await loadPlayer(db, [name]);
+      const start = performance.now();
+      const p = await loadPlayer(db, [name]);
+      times.push(performance.now() - start);
+      expect(p?.name).toBe(name);
+      // Pas de point inventé : chaque point de courbe a un score réel ou marque une absence.
+      for (const pt of p!.live!.series) expect(pt.score === null || pt.score > 0).toBe(true);
+    }
+    console.log("profile ms", times.map((t) => t.toFixed(1)).join(" "));
+    expect(Math.max(...times)).toBeLessThan(150);
   });
 });

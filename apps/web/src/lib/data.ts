@@ -3,7 +3,7 @@ import type { LeaderboardDef } from "@finals-hq/db/catalog";
 import { unstable_cache } from "next/cache";
 import { DEFAULT_BOARD } from "./boards";
 import { getDb, withTimeout } from "./db";
-import { loadBoard, loadFreshness, loadHome, loadPlayer, loadStatus, searchPlayers } from "./queries";
+import { loadBoard, loadFollowed, loadFreshness, loadHome, loadPlayer, loadStatus, searchPlayers } from "./queries";
 
 /**
  * Lectures mises en cache par Next (cache de données partagé entre les pages et les routes API) :
@@ -35,4 +35,10 @@ export function getPlayer(candidates: string[]) {
 /** Recherche : pas de cache de données (requêtes trop variées), le CDN garde les réponses 60 s. */
 export function search(q: string, limit?: number) {
   return withTimeout(searchPlayers(getDb(), q, DEFAULT_BOARD.id, limit), QUERY_BUDGET_MS);
+}
+
+/** Page Suivi : identifiants triés comme clé de cache, 60 s comme les classements. */
+export function getFollowed(ids: string[]) {
+  const key = [...new Set(ids)].sort();
+  return unstable_cache(() => withTimeout(loadFollowed(getDb(), key), QUERY_BUDGET_MS), ["followed", key.join(",")], { revalidate: LIVE_REVALIDATE, tags: ["players"] })();
 }
