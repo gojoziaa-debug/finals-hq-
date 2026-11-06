@@ -63,7 +63,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
-  const [messages, t, fresh] = await Promise.all([getMessages(), getTranslations("common"), freshnessOrNull()]);
+  const [messages, t, tn, fresh] = await Promise.all([getMessages(), getTranslations("common"), getTranslations("nav"), freshnessOrNull()]);
   return (
     <html lang={locale} className={`dark ${display.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
@@ -95,6 +95,10 @@ export default async function LocaleLayout({ children, params }: { children: Rea
             <div className="mx-auto max-w-container space-y-1 px-4 py-6 text-body-sm text-text-2 md:px-6 lg:px-8">
               <p>{t("notAffiliated")}</p>
               <p>{t("source")}</p>
+              <p className="flex gap-4">
+                <Link href="/status" className="underline hover:text-text">{tn("status")}</Link>
+                <Link href="/following" className="underline hover:text-text">{tn("following")}</Link>
+              </p>
             </div>
           </footer>
           <BottomNav />

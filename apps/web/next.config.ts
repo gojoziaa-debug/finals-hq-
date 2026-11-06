@@ -8,7 +8,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   // Les paquets du monorepo sont du TypeScript source (imports en .ts) : Next les compile.
-  transpilePackages: ["@finals-hq/db"],
+  transpilePackages: ["@finals-hq/db", "@finals-hq/core"],
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },

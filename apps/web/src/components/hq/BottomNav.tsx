@@ -1,5 +1,5 @@
 "use client";
-import { Activity, Home, ListOrdered, Search } from "lucide-react";
+import { Activity, Home, ListOrdered, Search, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
@@ -8,8 +8,12 @@ const ITEMS = [
   { href: "/", key: "home", icon: Home, match: (p: string) => p === "/" },
   { href: "/leaderboards", key: "leaderboards", icon: ListOrdered, match: (p: string) => p.startsWith("/leaderboards") },
   { href: "/search", key: "search", icon: Search, match: (p: string) => p.startsWith("/search") },
+  { href: "/following", key: "following", icon: Star, match: (p: string) => p.startsWith("/following") },
   { href: "/status", key: "status", icon: Activity, match: (p: string) => p.startsWith("/status") },
 ] as const;
+
+/** Téléphone : Accueil, Classements, Recherche, Suivi (phase E) ; l'état reste dans le pied de page et le menu du haut. */
+const PHONE_ITEMS = ITEMS.filter((i) => i.key !== "status");
 
 /** Barre d'onglets en bas sous md (téléphone d'abord, cibles de 44 px). */
 export function BottomNav() {
@@ -18,7 +22,7 @@ export function BottomNav() {
   return (
     <nav aria-label={t("tabs")} className="fixed inset-x-0 bottom-0 z-sticky border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
       <ul className="grid grid-cols-4">
-        {ITEMS.map(({ href, key, icon: Icon, match }) => {
+        {PHONE_ITEMS.map(({ href, key, icon: Icon, match }) => {
           const active = match(pathname);
           return (
             <li key={key}>

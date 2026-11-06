@@ -11,7 +11,8 @@ Le site FINALS HQ : Next.js 15 (App Router), Tailwind avec les tokens du design 
 | `/[locale]/leaderboards` | tous les classements (catalogue) | statique |
 | `/[locale]/leaderboards/[season]/[board]` | classement complet : `s12/ranked`, `s12/worldtour`, `s1/ranked-steam`, `events/ce44`… | ISR 60 s (archives : données en cache 24 h) |
 | `/[locale]/search?q=` | recherche (même moteur que la palette Ctrl K) | dynamique, CDN 60 s sur l'API |
-| `/[locale]/players/[name]` | profil minimal (`GOJO-6255` pour `GOJO#6255`) ; profil complet au sprint 3 | ISR 120 s à la demande |
+| `/[locale]/players/[name]` | profil (`GOJO-6255` pour `GOJO#6255`) : en-tête, courbe RS / rang (ECharts chargé à la demande), KPI, activité, répartition, onglet Carrière (archives, records, badges, Legacy) ; états masqué, hors top 10 000, inconnu | ISR 120 s à la demande |
+| `/[locale]/following` | joueurs suivis, liste stockée dans le navigateur (`hq-following`), export / import JSON | statique, état chargé par `/api/following?ids=` |
 | `/[locale]/status` | fraîcheur par classement, passages du worker, taille de la base | ISR 60 s |
 | `/[locale]/styleguide` | tokens et composants dans leurs états | dev et prévisualisations seulement |
 | `/api/boards/[id]` | classement complet en colonnes (≈ 445 Ko, ≈ 160 Ko compressé) | CDN 60 s |
@@ -61,3 +62,11 @@ BASE_URL=http://localhost:3000 pnpm --filter @finals-hq/web e2e
 - **Robots** : tout ce qui n'est pas la production Vercel est en `noindex` (le domaine n'est pas encore choisi).
 - **Accent clair** : `accent-ink` passe de #5E7A00 à #567000 sur le thème clair (4,49:1 → 5,1:1 sur #F4F4F7,
   mesuré par axe-core). Le thème sombre ne change pas.
+
+## Profil joueur (sprint 3)
+
+- Courbe : clôtures quotidiennes de `player_history` avant le premier événement gardé, puis chaque changement de `rs_events` (8 jours), puis un point « maintenant » au dernier relevé (le rang bouge sans match). Tracé en marches : le RS tient jusqu'au changement suivant.
+- Indicateurs dérivés (`src/lib/profile.ts`, purs et testés) : pic, jours joués sur les jours réellement observés, distance à la ligne top 500, variation du rang (7 jours, sinon depuis le début de la collecte avec la date affichée). Rien n'est extrapolé.
+- Rang affiché partout (classement, profil, recherche, suivi) dans le même ordre : score, puis rang stocké, puis identifiant.
+- Carrière : meilleur résultat ranked par saison terminée, toutes plateformes ; Legacy calculé avec `@finals-hq/core/rating`.
+- Le Rating (jauge, radar) arrive au sprint 5 ; le profil affiche « en calibration » d'ici là.
