@@ -4,7 +4,8 @@ import { unstable_cache } from "next/cache";
 import { DEFAULT_BOARD } from "./boards";
 import { getDb, withTimeout } from "./db";
 import { loadBoard, loadClub, loadClubs, loadFollowed, loadFreshness, loadHome, loadMovers, loadPastThresholds, loadPlayer, loadStatus, loadTop500, searchPlayers } from "./queries";
-import type { MoverWindow } from "./types";
+import { loadPlayerRating, loadRatingBoard, loadRatingExample, loadRatingRun } from "./rating-queries";
+import type { MoverWindow, RatingSort } from "./types";
 
 /**
  * Lectures mises en cache par Next (cache de données partagé entre les pages et les routes API) :
@@ -58,4 +59,22 @@ export function getClub(tag: string) {
 
 export function getMovers(window: MoverWindow, direction: "up" | "down") {
   return unstable_cache(() => withTimeout(loadMovers(getDb(), DEFAULT_BOARD, window, direction), QUERY_BUDGET_MS), ["movers", window, direction], { revalidate: LIVE_REVALIDATE, tags: ["movers"] })();
+}
+
+/* Sprint 5 : Rating (recalculé au plus une fois par heure par le worker). */
+export function getPlayerRating(playerId: string) {
+  return unstable_cache(() => withTimeout(loadPlayerRating(getDb(), playerId, DEFAULT_BOARD.id), QUERY_BUDGET_MS), ["rating", playerId], { revalidate: 120, tags: ["rating"] })();
+}
+
+export const getRatingRun = unstable_cache(() => withTimeout(loadRatingRun(getDb(), DEFAULT_BOARD), QUERY_BUDGET_MS), ["rating-run"], { revalidate: LIVE_REVALIDATE * 5, tags: ["rating"] });
+
+export function getRatingBoard(sort: RatingSort) {
+  return unstable_cache(() => withTimeout(loadRatingBoard(getDb(), DEFAULT_BOARD, sort), QUERY_BUDGET_MS), ["rating-board", sort], { revalidate: LIVE_REVALIDATE * 5, tags: ["rating"] })();
+}
+
+export const getRatingExample = unstable_cache(() => withTimeout(loadRatingExample(getDb(), DEFAULT_BOARD), QUERY_BUDGET_MS), ["rating-example"], { revalidate: LIVE_REVALIDATE * 5, tags: ["rating"] });
+
+/** Environnement de déploiement, pour ouvrir le Rating sur les previews avant sa publication. */
+export function ratingEnv() {
+  return { vercelEnv: process.env.VERCEL_ENV, nodeEnv: process.env.NODE_ENV };
 }

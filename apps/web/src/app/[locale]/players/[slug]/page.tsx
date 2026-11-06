@@ -13,6 +13,7 @@ import { LeagueBadge } from "@/components/hq/LeagueBadge";
 import { LeagueDistribution } from "@/components/hq/LeagueDistribution";
 import { ProfileTabs } from "@/components/hq/ProfileTabs";
 import { RelativeTime } from "@/components/hq/RelativeTime";
+import { RatingPanel } from "@/components/hq/RatingPanel";
 import { RsChart } from "@/components/hq/RsChart";
 import { ShareButton } from "@/components/hq/ShareButton";
 import { EmptyState } from "@/components/hq/States";
@@ -23,7 +24,8 @@ import { cn } from "@/lib/cn";
 import { boardPath, boardShortName, DEFAULT_BOARD, LIVE_SEASON, scoreUnit } from "@/lib/boards";
 import { clubPath } from "@/lib/clubs";
 import { compareHref } from "@/lib/compare";
-import { getPlayer } from "@/lib/data";
+import { getPlayer, getPlayerRating, ratingEnv } from "@/lib/data";
+import { ratingVisibility } from "@/lib/rating";
 import { formatDate, formatNumber, formatRank, type Locale } from "@/lib/format";
 import { league as leagueOf } from "@/lib/league";
 import { namesFromSlug, playerSlug, splitName } from "@/lib/players";
@@ -71,7 +73,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 /**
  * Profil joueur (sprint 3, wireframe de la phase E) : en-tête, courbe RS et rang, KPI, activité, répartition,
  * onglet Carrière depuis les archives, anciens pseudos. États : masqué, hors du top 10 000, inconnu.
- * Le Rating (jauge, radar) arrive au sprint 5, une fois les références mesurées sur une semaine de vraies données.
+ * Rating (sprint 5) : jauge, radar et composantes ; note cachée tant que la semaine de calibration n'est pas validée.
  */
 export default async function PlayerPage({ params }: { params: Params }) {
   const { locale, slug } = await params;
@@ -96,6 +98,9 @@ export default async function PlayerPage({ params }: { params: Params }) {
   const club = main?.club ?? others.find((o) => o.club)?.club ?? null;
   const historyStartLabel = live.historyStart ? formatDate(new Date(`${live.historyStart}T00:00:00Z`), l) : "—";
   const career = careerOf(player.seasons);
+  // Le Rating ne bloque jamais le profil : sans calcul (ou en cas d'erreur), le bloc garde son état « en calibration ».
+  const rating = main ? await getPlayerRating(player.id).catch(() => null) : null;
+  const visibility = rating ? ratingVisibility(rating.run, ratingEnv()) : null;
 
   // Indicateurs (D) : calculés sur nos relevés depuis le début de la collecte.
   const refNow = live.takenAt ? Date.parse(live.takenAt) : nowMs;
@@ -139,7 +144,9 @@ export default async function PlayerPage({ params }: { params: Params }) {
         </section>
       )}
 
-      {main && (
+      {main && rating && visibility ? (
+        <RatingPanel rating={rating} visibility={visibility} locale={l} renderedAt={renderedAt} />
+      ) : main ? (
         <section aria-labelledby="rating" className="rounded-lg border border-dashed border-border bg-surface p-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -149,7 +156,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
             <p className="mt-0.5 text-body-sm text-text-2">{t("ratingBody")}</p>
           </div>
         </section>
-      )}
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section aria-labelledby="activity" className="rounded-lg border border-border bg-surface p-4">

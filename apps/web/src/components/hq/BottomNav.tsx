@@ -12,7 +12,7 @@ const ITEMS = [
   { href: "/status", key: "status", icon: Activity, match: (p: string) => p.startsWith("/status") },
 ] as const;
 
-const MORE_PATHS = ["/more", "/top-500", "/clubs", "/movers", "/compare", "/status"];
+const MORE_PATHS = ["/more", "/rating", "/methodology", "/top-500", "/clubs", "/movers", "/compare", "/status"];
 
 /** Téléphone (phase E) : Accueil, Classements, Recherche, Suivi, Plus ; Plus mène à la ligne top 500, aux clubs, aux progressions, à la comparaison et à l'état. */
 const PHONE_ITEMS = [
@@ -20,9 +20,10 @@ const PHONE_ITEMS = [
   { href: "/more", key: "more", icon: LayoutGrid, match: (p: string) => MORE_PATHS.some((m) => p.startsWith(m)) },
 ] as const;
 
-/** Ordinateur : la navigation de la phase E (le Rating et la Méthodologie arrivent au sprint 5). */
+/** Ordinateur : la navigation de la phase E (Rating ajouté au sprint 5, la Méthodologie est liée depuis le Rating et le profil). */
 const DESKTOP_ITEMS = [
   { href: "/leaderboards", key: "leaderboards", match: (p: string) => p.startsWith("/leaderboards") },
+  { href: "/rating", key: "rating", match: (p: string) => p.startsWith("/rating") || p.startsWith("/methodology") },
   { href: "/top-500", key: "top500", match: (p: string) => p.startsWith("/top-500") },
   { href: "/clubs", key: "clubs", match: (p: string) => p.startsWith("/clubs") },
   { href: "/movers", key: "movers", match: (p: string) => p.startsWith("/movers") },

@@ -232,3 +232,69 @@ export interface MoversData {
   historyStart: string | null;
   rows: MoverRow[];
 }
+
+/* ───────────────────────────── Sprint 5 : Rating ───────────────────────────── */
+
+export type RatingComponentKey = "level" | "peak" | "momentum" | "consistency" | "legacy";
+
+/** Dernier calcul du Rating d'un classement et les références de population mesurées ce jour-là. */
+export interface RatingRunInfo {
+  computedAt: string;
+  dataUntil: string;
+  dataSince: string;
+  observedDays: number;
+  calibrationDays: number;
+  players: number;
+  version: string;
+  refs: {
+    momentum: Record<"h24" | "d7" | "d30", { median: number; mad: number; n: number } | null>;
+    drawdown: { n: number; p10: number; p25: number; median: number; p75: number; p90: number } | null;
+    anomalyThreshold: number | null;
+    anomalySamples: number;
+    topRs: number;
+  };
+}
+
+export interface PlayerRatingData {
+  rating: number | null;
+  raw: number | null;
+  provisional: boolean;
+  level: number;
+  peak: number;
+  momentum: number | null;
+  consistency: number | null;
+  legacy: number;
+  momentumZ: number | null;
+  deltas: { h24: number | null; d7: number | null; d30: number | null };
+  drawdown: number | null;
+  activeDays30: number;
+  hotStreak: boolean;
+  anomalies: number;
+  /** Place dans l'ordre du Rating (profils masqués exclus). */
+  position: number | null;
+  run: RatingRunInfo;
+}
+
+export type RatingSort = "rating" | "momentum" | "consistency";
+
+export interface RatingBoardRow {
+  position: number;
+  rank: number;
+  name: string;
+  score: number;
+  league: number | null;
+  club: string | null;
+  rating: number | null;
+  raw: number | null;
+  provisional: boolean;
+  level: number;
+  momentum: number | null;
+  consistency: number | null;
+  legacy: number;
+  hotStreak: boolean;
+}
+
+export interface RatingBoardData {
+  run: RatingRunInfo | null;
+  rows: RatingBoardRow[];
+}

@@ -23,7 +23,11 @@
     "compareTitle": "Comparer des joueurs · FINALS HQ",
     "compareTitleNames": "{names} · FINALS HQ",
     "compareDescription": "Compare 2 à 4 joueurs de THE FINALS ({season}) : rang, RS, progression, carrière.",
-    "moreTitle": "Plus · FINALS HQ"
+    "moreTitle": "Plus · FINALS HQ",
+    "ratingTitle": "Rating FINALS HQ",
+    "ratingDescription": "Le classement des joueurs de THE FINALS ({season}) par Rating FINALS HQ, Momentum et Consistance.",
+    "methodologyTitle": "Méthodologie du Rating",
+    "methodologyDescription": "Comment le Rating FINALS HQ est calculé : formules, poids, références de population et un exemple vivant."
   },
   "common": {
     "skip": "Aller au contenu",
@@ -61,7 +65,9 @@
     "clubs": "Clubs",
     "movers": "Progressions",
     "compare": "Comparer",
-    "more": "Plus"
+    "more": "Plus",
+    "rating": "Rating",
+    "methodology": "Méthodologie"
   },
   "units": {
     "rs": "RS",
@@ -525,6 +531,134 @@
     "clubs": "Classement des clubs et leurs membres classés",
     "movers": "Plus fortes progressions et plus grosses chutes",
     "compare": "2 à 4 joueurs côte à côte",
-    "status": "Fraîcheur des relevés et santé de la collecte"
+    "status": "Fraîcheur des relevés et santé de la collecte",
+    "rating": "La note sur 99, le Momentum et la Consistance",
+    "methodology": "Formules, poids et exemple vivant du Rating"
+  },
+  "rating": {
+    "title": "Rating FINALS HQ",
+    "calibrating": "en calibration",
+    "calibratingHint": "La note est publiée après une semaine de vraies données, à partir du {date}",
+    "preview": "aperçu",
+    "previewHint": "Visible ici parce que c'est une preview : en production la note reste cachée jusqu'à la fin de la calibration",
+    "provisional": "provisoire",
+    "provisionalHint": "Momentum ou Consistance pas encore mesurable : la note se calcule sur les composantes disponibles",
+    "provisionalShort": "prov.",
+    "hotStreak": "série chaude",
+    "anomaly": "{count, plural, one {# variation inhabituelle} other {# variations inhabituelles}}",
+    "anomalyHint": "Variation de RS entre deux relevés rapprochés au-delà du 99,9e centile de la population. Signalée pour vérification, elle ne change pas la note.",
+    "gaugeLabel": "Rating {value} sur 99",
+    "gaugeCalibrating": "Rating en calibration",
+    "position": "n° {position} du Rating",
+    "visibleOn": "visible le {date}",
+    "progressLabel": "Avancement de la calibration",
+    "progress": "{days} j de relevés sur {total}",
+    "radarLabel": "Composantes du Rating sur 100",
+    "component": {
+      "level": "Niveau",
+      "peak": "Pic",
+      "momentum": "Momentum",
+      "consistency": "Consistance",
+      "legacy": "Legacy"
+    },
+    "componentHint": {
+      "level": "RS lu sur les seuils de ligue et rang lu sur une échelle logarithmique, à parts égales.",
+      "peak": "Meilleur Niveau atteint cette saison depuis le début de nos relevés.",
+      "momentum": "Progression sur 24 h, 7 j et 30 j comparée à celle des joueurs actifs.",
+      "consistency": "Écart moyen à ton meilleur RS du mois, jour après jour ({days} j actifs sur 30, il en faut 10).",
+      "legacy": "Saisons terminées : top 500, top 100, n° 1, Diamond, Platinum."
+    },
+    "pending": "en calibration",
+    "na": "n/d",
+    "footerOpen": "Rating v{version}.",
+    "footerCalibrating": "Niveau, Pic et Legacy ne dépendent d'aucune référence et s'affichent déjà ; la note, le Momentum et la Consistance attendent le {date}.",
+    "computed": "Calculé",
+    "methodLink": "Méthodologie"
+  },
+  "ratingPage": {
+    "title": {
+      "rating": "Rating",
+      "momentum": "Momentum",
+      "consistency": "Consistance"
+    },
+    "intro": {
+      "rating": "Les 100 meilleures notes du classement ranked : niveau, pic, momentum, consistance et legacy réunis sur 99.",
+      "momentum": "Qui progresse le plus vite par rapport aux autres joueurs actifs, sur 24 h, 7 jours et 30 jours.",
+      "consistency": "Qui reste au plus près de son meilleur RS du mois, jour après jour (au moins 10 jours actifs)."
+    },
+    "players": "{count} joueurs notés",
+    "tabsLabel": "Classements du Rating",
+    "tab": {
+      "rating": "Rating",
+      "momentum": "Momentum",
+      "consistency": "Consistance",
+      "movers": "Progressions"
+    },
+    "calibrationTitle": "Semaine de calibration en cours",
+    "calibrationBody": "La note se mesure contre la population : il faut une semaine de vraies données pour fixer les références (progression typique, recul typique, seuil d'anomalie). Le classement s'ouvre à partir du {date}, après relecture du rapport de calibration.",
+    "empty": "Personne à classer pour l'instant",
+    "emptyHint": {
+      "rating": "Aucune note calculée pour le moment.",
+      "momentum": "Le Momentum demande au moins 24 h de relevés.",
+      "consistency": "La Consistance demande 10 jours actifs sur les 30 derniers."
+    },
+    "note": {
+      "rating": "Note arrondie et plafonnée à 99. « prov. » = Momentum ou Consistance pas encore mesurable. Profils masqués exclus.",
+      "momentum": "Momentum = 50 + 50 × tanh(z / 2), z étant l'écart robuste à la médiane des joueurs actifs. 50 = progression typique.",
+      "consistency": "Consistance = 100 × (1 − centile du recul moyen). 50 = joueur typique, 100 = jamais sous son meilleur du mois."
+    }
+  },
+  "methodology": {
+    "title": "Méthodologie du Rating",
+    "intro": "Le Rating FINALS HQ résume un joueur classé en une note sur 99. Il ne part que des classements publics relevés toutes les 10 minutes : aucune donnée de match, rien d'estimé.",
+    "version": "Version {version} du calcul. Toute évolution change le numéro de version et s'annonce ici.",
+    "formulaTitle": "La formule",
+    "formulaBody": "Moyenne pondérée des composantes disponibles, poids renormalisés quand une composante manque, arrondie et plafonnée à 99. La note est provisoire tant que le Momentum ou la Consistance ne sont pas mesurables.",
+    "component": "Composante",
+    "weight": "Poids",
+    "formula": {
+      "level": "Niveau = ½ · A(RS) + ½ · R(rang)",
+      "peak": "Pic = max(Niveau) sur la saison",
+      "momentum": "M = 50 + 50 · tanh(z / 2), z = 0,3·z24h + 0,5·z7j + 0,2·z30j",
+      "consistency": "C = 100 · (1 − centile du recul moyen sur 30 j)",
+      "legacy": "L = 100 · (1 − e^(−points / 250))"
+    },
+    "body": {
+      "level": "A lit le RS sur les seuils de ligue de la saison (Platinum 2 = 62, Diamond 4 = 74, Diamond 1 = 86, puis échelle logarithmique jusqu'au n° 1 = 99). R lit le rang sur une échelle logarithmique (n° 1 = 100, n° 100 = 92, n° 1 000 = 80, n° 10 000 = 55). Vérifié sur la S12 : les ligues occupent des bandes disjointes, sans inversion.",
+      "peak": "Le meilleur Niveau atteint pendant la saison depuis le début de nos relevés, lu contre le n° 1 du moment. Jamais sous le Niveau actuel.",
+      "momentum": "Pour chaque fenêtre, la variation de RS est comparée à celle des joueurs actifs (médiane et écart absolu médian), bornée à ±3. Une fenêtre n'existe que si le joueur était déjà relevé à son début. Série chaude : z sur 7 j ≥ 1,5 et au moins 3 jours actifs.",
+      "consistency": "Chaque jour actif, on mesure de combien ton RS de clôture est sous ton meilleur RS du mois (début de fenêtre compris), puis on fait la moyenne. Ce recul moyen est classé parmi les joueurs éligibles (10 jours actifs sur 30) : peu de recul = haute Consistance, qu'on gagne beaucoup ou peu.",
+      "legacy": "Par saison terminée classée : top 500 = 100 points (+40 top 100, +60 n° 1), Diamond 60, Platinum 30, présence 10. Les saisons sans ligues comparables (bêtas, S1, S2) valent 10. Chaque saison compte, de moins en moins."
+    },
+    "signalsTitle": "Signaux",
+    "signalsBody": "Une variation de RS entre deux relevés espacés de 20 minutes au plus, au-delà du 99,9e centile de la population, est signalée pour vérification. Elle ne change jamais la note. Les variations après un trou de collecte ne comptent pas : elles cumulent des dizaines de matchs.",
+    "calibrationTitle": "Calibration",
+    "calibrationBody": "Les références de population se mesurent sur au moins sept jours de vrais relevés. La note publique s'ouvre à partir du {date}, après comparaison de ces références à la simulation de conception.",
+    "reference": "Référence",
+    "measured": "Mesuré au dernier calcul",
+    "refMomentum": {
+      "h24": "Momentum 24 h : médiane / écart (joueurs actifs)",
+      "d7": "Momentum 7 j : médiane / écart",
+      "d30": "Momentum 30 j : médiane / écart"
+    },
+    "medianMad": "{median} / {mad} RS ({n})",
+    "notYet": "pas encore mesurable",
+    "refDrawdown": "Recul moyen médian (joueurs éligibles)",
+    "drawdownValue": "{median} RS ({n})",
+    "refAnomaly": "Seuil de variation inhabituelle",
+    "observed": "{days} j de relevés sur {total} · {players} joueurs",
+    "exampleTitle": "Exemple vivant",
+    "exampleIntro": "Le joueur classé {rank} au dernier calcul :",
+    "value": "Valeur",
+    "points": "Points",
+    "exampleHidden": "publiée après la calibration",
+    "exampleNote": "Points = valeur × poids renormalisé sur les composantes disponibles ; leur somme donne la note avant arrondi.",
+    "limitsTitle": "Limites connues",
+    "limits": [
+      "Seul le top 10 000 est public : un joueur sous la coupure n'a pas de note.",
+      "Les fenêtres de 7 et 30 jours ne se remplissent qu'au fil des relevés (collecte démarrée le 5 novembre 2026).",
+      "Un trou de collecte fausse le Momentum de la fenêtre concernée : la page État les montre.",
+      "Le RS ne dit pas le rôle ni l'équipe : le Rating mesure une trajectoire de classement, pas un niveau mécanique."
+    ]
   }
 }
