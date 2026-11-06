@@ -11,8 +11,8 @@ collectés dans le dépôt public [finals-hq-data](https://github.com/gojoziaa-d
 | Dossier | Rôle |
 | --- | --- |
 | `packages/core` | Logique métier pure et testée (rating, statistiques). Aucune dépendance d'exécution. |
-| `packages/db` | Schéma Postgres (Drizzle) et migrations. À venir. |
-| `apps/worker` | Ingestion des instantanés vers la base. À venir. |
+| `packages/db` | Schéma Postgres (Drizzle), migrations SQL, catalogue des 82 classements, certificat racine Supabase. |
+| `apps/worker` | Ingestion des instantanés vers la base, import des archives, état de la chaîne (`apps/worker/README.md`). |
 | `apps/web` | Site Next.js. À venir. |
 
 ## Démarrer
@@ -20,9 +20,13 @@ collectés dans le dépôt public [finals-hq-data](https://github.com/gojoziaa-d
 ```bash
 corepack enable
 pnpm install
-pnpm test        # tests unitaires (vitest)
+pnpm test        # tests unitaires (vitest ; la base est PGlite, Postgres en mémoire)
 pnpm typecheck   # tsc strict sur chaque package
+pnpm worker status   # état de la base (DATABASE_URL requise, voir apps/worker/.env.example)
 ```
+
+Base de données : Supabase Postgres (offre gratuite). Les migrations sont dans `packages/db/migrations`
+et s'appliquent avec `pnpm worker migrate`. Le workflow `ingest.yml` les applique avant chaque ingestion.
 
 Simulation du rating sur un instantané réel (fichier `full-*.json.gz` du dépôt de données) :
 

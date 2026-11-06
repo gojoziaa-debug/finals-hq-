@@ -7,7 +7,8 @@
   "engines": { "node": ">=22.12" },
   "scripts": {
     "test": "pnpm -r --if-present test",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "worker": "pnpm --filter @finals-hq/worker worker"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",
