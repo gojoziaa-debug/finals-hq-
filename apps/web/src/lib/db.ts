@@ -18,10 +18,27 @@ export class DataUnavailableError extends Error {
 export function getDb(): Db {
   const url = process.env.DATABASE_URL;
   if (!url) throw new DataUnavailableError();
-  connection ??= connect(url, { max: 1 });
+  connection ??= connect(url, { max: 1, connectTimeoutSeconds: 5 });
   return connection.db;
 }
 
 export function hasDatabase(): boolean {
   return Boolean(process.env.DATABASE_URL);
+}
+
+/** Erreur levée quand la base ne répond pas à temps : la page affiche son état d'erreur au lieu de charger sans fin. */
+export class DataTimeoutError extends Error {
+  code = "DB_TIMEOUT";
+  constructor(ms: number) {
+    super(`la base n'a pas répondu en ${ms} ms`);
+    this.name = "DataTimeoutError";
+  }
+}
+
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new DataTimeoutError(ms)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }

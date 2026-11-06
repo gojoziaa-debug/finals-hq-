@@ -82,14 +82,14 @@ export function sslOptionsFor(url: string): SslOption {
  * Connexion de production. Fonctionne avec le pooler Supabase en mode transaction (port 6543)
  * comme en mode session (port 5432) : aucune requête préparée, pool réduit.
  */
-export function connect(url: string, options: { max?: number } = {}): Connection {
+export function connect(url: string, options: { max?: number; connectTimeoutSeconds?: number } = {}): Connection {
   if (!url) throw new Error("DATABASE_URL manquante");
   parseDatabaseUrl(url);
   const client = postgres(url.trim(), {
     prepare: false,
     max: options.max ?? 4,
     ssl: sslOptionsFor(url.trim()),
-    connect_timeout: 20,
+    connect_timeout: options.connectTimeoutSeconds ?? 20,
     idle_timeout: 30,
   });
   const db = drizzle(client, { schema }) as unknown as Db;
