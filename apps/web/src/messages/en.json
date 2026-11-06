@@ -23,7 +23,11 @@
     "compareTitle": "Compare players · FINALS HQ",
     "compareTitleNames": "{names} · FINALS HQ",
     "compareDescription": "Compare 2 to 4 THE FINALS players ({season}): rank, RS, progress, career.",
-    "moreTitle": "More · FINALS HQ"
+    "moreTitle": "More · FINALS HQ",
+    "ratingTitle": "FINALS HQ Rating",
+    "ratingDescription": "THE FINALS players ({season}) ranked by FINALS HQ Rating, Momentum and Consistency.",
+    "methodologyTitle": "Rating methodology",
+    "methodologyDescription": "How the FINALS HQ Rating is computed: formulas, weights, population references and a live example."
   },
   "common": {
     "skip": "Skip to content",
@@ -61,7 +65,9 @@
     "clubs": "Clubs",
     "movers": "Movers",
     "compare": "Compare",
-    "more": "More"
+    "more": "More",
+    "rating": "Rating",
+    "methodology": "Methodology"
   },
   "units": {
     "rs": "RS",
@@ -525,6 +531,135 @@
     "clubs": "Club ranking and their ranked members",
     "movers": "Biggest risers and fallers",
     "compare": "2 to 4 players side by side",
-    "status": "Snapshot freshness and collection health"
+    "status": "Snapshot freshness and collection health",
+    "rating": "The score out of 99, Momentum and Consistency",
+    "methodology": "Formulas, weights and a live example of the Rating"
+  },
+  "rating": {
+    "title": "FINALS HQ Rating",
+    "calibrating": "calibrating",
+    "calibratingHint": "The score goes public after one week of real data, from {date}",
+    "preview": "preview",
+    "previewHint": "Shown here because this is a preview: in production the score stays hidden until calibration ends",
+    "provisional": "provisional",
+    "provisionalHint": "Momentum or Consistency cannot be measured yet: the score uses the available components",
+    "provisionalShort": "prov.",
+    "hotStreak": "hot streak",
+    "anomaly": "{count, plural, one {# unusual change} other {# unusual changes}}",
+    "anomalyHint": "RS change between two close snapshots beyond the population's 99.9th percentile. Flagged for review, it never changes the score.",
+    "gaugeLabel": "Rating {value} out of 99",
+    "gaugeCalibrating": "Rating calibrating",
+    "position": "#{position} by Rating",
+    "visibleOn": "visible on {date}",
+    "progressLabel": "Calibration progress",
+    "progress": "{days} of {total} days observed",
+    "radarLabel": "Rating components out of 100",
+    "component": {
+      "level": "Level",
+      "peak": "Peak",
+      "momentum": "Momentum",
+      "consistency": "Consistency",
+      "legacy": "Legacy"
+    },
+    "componentHint": {
+      "level": "RS read against the league thresholds and rank read on a log scale, half and half.",
+      "peak": "Best Level reached this season since our first snapshot.",
+      "momentum": "Progress over 24 h, 7 d and 30 d compared with other active players.",
+      "consistency": "Average gap to your best RS of the month, day by day (active days: {days} of 30, 10 needed).",
+      "legacy": "Finished seasons: top 500, top 100, #1, Diamond, Platinum."
+    },
+    "pending": "calibrating",
+    "na": "n/a",
+    "footerOpen": "Rating v{version}.",
+    "footerCalibrating": "Level, Peak and Legacy need no reference and are shown already; the score, Momentum and Consistency wait until {date}.",
+    "computed": "Computed",
+    "methodLink": "Methodology",
+    "weightNote": "Official weights; while a component is missing, the others share its weight."
+  },
+  "ratingPage": {
+    "title": {
+      "rating": "Rating",
+      "momentum": "Momentum",
+      "consistency": "Consistency"
+    },
+    "intro": {
+      "rating": "The top 100 scores of the ranked leaderboard: level, peak, momentum, consistency and legacy in one number out of 99.",
+      "momentum": "Who climbs fastest compared with other active players, over 24 h, 7 days and 30 days.",
+      "consistency": "Who stays closest to their best RS of the month, day after day (at least 10 active days)."
+    },
+    "players": "{count} players rated",
+    "tabsLabel": "Rating leaderboards",
+    "tab": {
+      "rating": "Rating",
+      "momentum": "Momentum",
+      "consistency": "Consistency",
+      "movers": "Movers"
+    },
+    "calibrationTitle": "Calibration week in progress",
+    "calibrationBody": "The score is measured against the population: it takes one week of real data to set the references (typical gain, typical drawdown, anomaly threshold). The leaderboard opens from {date}, after the calibration report has been reviewed.",
+    "empty": "Nobody to rank yet",
+    "emptyHint": {
+      "rating": "No score computed yet.",
+      "momentum": "Momentum needs at least 24 h of snapshots.",
+      "consistency": "Consistency needs 10 active days out of the last 30."
+    },
+    "note": {
+      "rating": "Rounded and capped at 99. “prov.” = Momentum or Consistency not measurable yet. Hidden profiles excluded.",
+      "momentum": "Momentum = 50 + 50 × tanh(z / 2), z being the robust distance to the median of active players. 50 = typical progress.",
+      "consistency": "Consistency = 100 × (1 − percentile of the mean drawdown). 50 = typical player, 100 = never below their best of the month."
+    }
+  },
+  "methodology": {
+    "title": "Rating methodology",
+    "intro": "The FINALS HQ Rating sums up a ranked player in one score out of 99. It only uses the public leaderboards, read every 10 minutes: no match data, nothing estimated.",
+    "version": "Version {version} of the computation. Any change bumps the version number and is announced here.",
+    "formulaTitle": "The formula",
+    "formulaBody": "Weighted mean of the available components, weights renormalised when one is missing, rounded and capped at 99. The score is provisional while Momentum or Consistency cannot be measured.",
+    "component": "Component",
+    "weight": "Weight",
+    "formula": {
+      "level": "Level = ½ · A(RS) + ½ · R(rank)",
+      "peak": "Peak = max(Level) over the season",
+      "momentum": "M = 50 + 50 · tanh(z / 2), z = 0.3·z24h + 0.5·z7d + 0.2·z30d",
+      "consistency": "C = 100 · (1 − percentile of the 30-day mean drawdown)",
+      "legacy": "L = 100 · (1 − e^(−points / 250))"
+    },
+    "body": {
+      "level": "A reads the RS against the season's league thresholds (Platinum 2 = 62, Diamond 4 = 74, Diamond 1 = 86, then a log scale up to #1 = 99). R reads the rank on a log scale (#1 = 100, #100 = 92, #1,000 = 80, #10,000 = 55). Checked on S12: leagues sit in disjoint bands, no inversion.",
+      "peak": "The best Level reached during the season since our first snapshot, read against the current #1. Never below the current Level.",
+      "momentum": "For each window, the RS change is compared with active players (median and median absolute deviation), capped at ±3. A window only exists if the player was already observed at its start. Hot streak: 7-day z ≥ 1.5 and at least 3 active days.",
+      "consistency": "On each active day we measure how far your closing RS sits below your best RS of the month (window start included), then average it. That mean drawdown is ranked among eligible players (10 active days out of 30): little drawdown = high Consistency, whether you gain a lot or a little.",
+      "legacy": "Per finished ranked season: top 500 = 100 points (+40 top 100, +60 #1), Diamond 60, Platinum 30, presence 10. Seasons without comparable leagues (betas, S1, S2) count 10. Every season counts, less and less."
+    },
+    "signalsTitle": "Signals",
+    "signalsBody": "An RS change between two snapshots at most 20 minutes apart, beyond the population's 99.9th percentile, is flagged for review. It never changes the score. Changes after a collection gap are ignored: they add up dozens of matches.",
+    "calibrationTitle": "Calibration",
+    "calibrationBody": "Population references are measured on at least seven days of real snapshots. The public score opens from {date}, after those references have been compared with the design simulation.",
+    "reference": "Reference",
+    "measured": "Measured at the last run",
+    "refMomentum": {
+      "h24": "Momentum 24 h: median / deviation (active players)",
+      "d7": "Momentum 7 d: median / deviation",
+      "d30": "Momentum 30 d: median / deviation"
+    },
+    "medianMad": "{median} / {mad} RS ({n})",
+    "notYet": "not measurable yet",
+    "refDrawdown": "Median mean drawdown (eligible players)",
+    "drawdownValue": "{median} RS ({n})",
+    "refAnomaly": "Unusual change threshold",
+    "observed": "{days} of {total} days observed · {players} players",
+    "exampleTitle": "Live example",
+    "exampleIntro": "The player ranked {rank} at the last run:",
+    "value": "Value",
+    "points": "Points",
+    "exampleHidden": "published after calibration",
+    "exampleNote": "Points = value × weight renormalised over the available components; their sum is the score before rounding.",
+    "limitsTitle": "Known limits",
+    "limits": [
+      "Only the top 10,000 is public: a player below the cutoff has no score.",
+      "The 7- and 30-day windows fill up as snapshots come in (collection started on 5 November 2026).",
+      "A collection gap skews the Momentum of the affected window: the Status page shows them.",
+      "RS says nothing about role or team: the Rating measures a ranking trajectory, not mechanical skill."
+    ]
   }
 }

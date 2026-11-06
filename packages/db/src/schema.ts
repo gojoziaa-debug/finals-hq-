@@ -12,6 +12,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  real,
   smallint,
   text,
   timestamp,
@@ -233,3 +234,48 @@ export const hiddenProfiles = pgTable("hidden_profiles", {
   appliedAt: tz("applied_at"),
   reason: text("reason"),
 });
+
+/** Migration 0004 : un calcul du Rating par classement, avec les références de population du moment. */
+export const ratingRuns = pgTable(
+  "rating_runs",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    leaderboardId: smallint("leaderboard_id").notNull().references(() => leaderboards.id),
+    ratingVersion: text("rating_version").notNull(),
+    computedAt: tz("computed_at").notNull(),
+    dataUntil: tz("data_until").notNull(),
+    dataSince: tz("data_since").notNull(),
+    players: integer("players").notNull(),
+    refs: jsonb("refs").$type<Record<string, unknown>>().notNull(),
+    durationMs: integer("duration_ms"),
+  },
+  (t) => [index("rating_runs_board_idx").on(t.leaderboardId, t.computedAt)],
+);
+
+/** Migration 0004 : dernière note de chaque joueur d'un classement (remplacée à chaque calcul). */
+export const ratings = pgTable(
+  "ratings",
+  {
+    leaderboardId: smallint("leaderboard_id").notNull().references(() => leaderboards.id),
+    playerId: big("player_id").notNull().references(() => players.id),
+    runId: integer("run_id").notNull(),
+    ratingVersion: text("rating_version").notNull(),
+    rating: smallint("rating"),
+    raw: real("raw"),
+    provisional: boolean("provisional").notNull(),
+    level: real("level").notNull(),
+    peak: real("peak").notNull(),
+    momentum: real("momentum"),
+    momentumZ: real("momentum_z"),
+    delta24h: integer("delta_24h"),
+    delta7d: integer("delta_7d"),
+    delta30d: integer("delta_30d"),
+    drawdown: real("drawdown"),
+    consistency: real("consistency"),
+    legacy: real("legacy").notNull(),
+    activeDays30: smallint("active_days_30").notNull(),
+    hotStreak: boolean("hot_streak").notNull().default(false),
+    anomalies: smallint("anomalies").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.leaderboardId, t.playerId] }), index("ratings_order_idx").on(t.leaderboardId, t.raw)],
+);

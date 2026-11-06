@@ -6,3 +6,4 @@ export * from "./consistency.ts";
 export * from "./legacy.ts";
 export * from "./rating.ts";
 export * from "./anomaly.ts";
+export * from "./population.ts";

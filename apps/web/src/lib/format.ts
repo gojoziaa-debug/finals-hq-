@@ -73,3 +73,9 @@ export function freshness(takenAt: Date | null, now: Date): Freshness {
   if (minutes < 180) return "stale";
   return "outdated";
 }
+
+/** Nombre à une décimale au plus (composantes du Rating, jours observés) : 60,8 · 0,8 · 74. */
+export function formatDecimal(value: number, locale: Locale, digits = 1): string {
+  const s = new Intl.NumberFormat(locale === "fr" ? "fr-FR" : "en-US", { maximumFractionDigits: digits }).format(value);
+  return locale === "fr" ? s.replace(/[  ]/g, " ") : s;
+}
