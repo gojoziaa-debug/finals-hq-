@@ -56,6 +56,26 @@ describe("ssl options", async () => {
     expect(supabase).toMatchObject({ rejectUnauthorized: true, servername: "aws-1-eu-central-1.pooler.supabase.com" });
     expect(supabase && supabase.ca?.length).toBe(1);
     expect(supabaseCertificates()[0]).toContain("BEGIN CERTIFICATE");
+  });
+  it("keeps the embedded root certificate identical to certs/supabase-prod-ca-2021.crt", async () => {
+    const { readFileSync } = await import("node:fs");
+    const file = readFileSync(new URL("../certs/supabase-prod-ca-2021.crt", import.meta.url), "utf8");
+    expect(supabaseCertificates()[0]?.trim()).toBe(file.trim());
+  });
+  it("rejects a malformed DATABASE_URL without echoing the secret", async () => {
+    const { parseDatabaseUrl } = await import("./index.ts");
+    expect(() => parseDatabaseUrl("aws-1-eu-central-1.pooler.supabase.com")).toThrow(/^DATABASE_URL invalide : attendu postgresql:/);
+    expect(() => parseDatabaseUrl('"postgresql://u:secret@h:6543/p"')).toThrow(/retire les guillemets/);
+    expect(() => parseDatabaseUrl("DATABASE_URL=postgresql://u:secret@h:6543/p")).toThrow(/NOM=/);
+    expect(() => parseDatabaseUrl("https://u:secret@h/p")).toThrow(/invalide/);
+    try {
+      parseDatabaseUrl("postgresql//u:secret@h");
+    } catch (e) {
+      expect(String(e)).not.toContain("secret");
+    }
+    expect(parseDatabaseUrl(" postgresql://u:p@h.example:6543/postgres\n").port).toBe("6543");
+  });
+  it("still refuses to disable verification", () => {
     expect(sslOptionsFor("postgresql://u:p@localhost:5432/db")).toBe(false);
     expect(sslOptionsFor("postgresql://u:p@db.example.org:5432/db")).toEqual({ rejectUnauthorized: true, servername: "db.example.org" });
   });

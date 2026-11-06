@@ -15,3 +15,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      # Le site doit compiler sans base : les pages affichent alors leur état « données indisponibles ».
+      - run: pnpm --filter @finals-hq/web build
