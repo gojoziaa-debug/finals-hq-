@@ -19,6 +19,10 @@ on:
         description: "Single leaderboard key (e.g. s12-crossplay); empty = all"
         required: false
         default: ""
+      force_rating:
+        description: "Recompute the Rating even if the last run is less than an hour old"
+        type: boolean
+        default: false
   push:
     branches: ["sprint/**"]
     paths: ["apps/worker/**", "packages/db/**", "packages/core/**", ".github/workflows/ingest.yml", "pnpm-lock.yaml"]
@@ -78,6 +82,13 @@ jobs:
           pnpm --filter @finals-hq/worker worker ${{ inputs.command || 'ingest' }}
           --data-root "$GITHUB_WORKSPACE/data"
           ${{ inputs.only != '' && format('--only {0}', inputs.only) || '' }}
+
+      # Rating v1 (sprint 5) : au plus un calcul par heure, même connexion dédiée que l'ingestion.
+      - name: Rating
+        if: (inputs.command || 'ingest') == 'ingest' && (inputs.only || '') == ''
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+        run: pnpm --filter @finals-hq/worker worker rating ${{ inputs.force_rating && '--force' || '' }}
 
       - name: Status
         if: always() && env.HAS_DATABASE == 'true'
