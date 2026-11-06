@@ -19,7 +19,15 @@ export interface StatusReport {
   live: LeaderboardStatus[];
   archives: { imported: number; expected: number };
   lastRuns: Array<{ id: number; command: string; status: string; startedAt: string; finishedAt: string | null; applied: number; rejected: number; error: string | null }>;
-  database: { sizeBytes: number | null; players: number; rsEventsEstimate: number; partitions: string[] };
+  database: {
+    sizeBytes: number | null;
+    players: number;
+    rsEventsEstimate: number;
+    partitions: string[];
+    /** Largest relations (table + indexes + toast), to watch the 500 MB Supabase Free limit. */
+    tables: Array<{ name: string; totalBytes: number; tableBytes: number; indexBytes: number; rowsEstimate: number }>;
+    indexes: Array<{ name: string; table: string; bytes: number }>;
+  };
 }
 
 export async function status(db: Db): Promise<StatusReport> {
@@ -49,6 +57,29 @@ export async function status(db: Db): Promise<StatusReport> {
   const [playersCount] = await queryRows<{ n: number }>(db, sql`SELECT count(*)::int AS n FROM players`);
   const [events] = await queryRows<{ n: string | number | null }>(db, sql`SELECT coalesce(sum(greatest(reltuples, 0)), 0)::bigint AS n FROM pg_class WHERE relname LIKE 'rs_events_%' AND relkind = 'r'`);
   const partitions = await queryRows<{ name: string }>(db, sql`SELECT relname AS name FROM pg_class WHERE relname LIKE 'rs_events_%' AND relkind = 'r' ORDER BY relname`);
+  const tables = await queryRows<{ name: string; total: string | number; table: string | number; index: string | number; rows: string | number }>(
+    db,
+    sql`SELECT c.relname AS name,
+               pg_total_relation_size(c.oid)::bigint AS total,
+               pg_relation_size(c.oid)::bigint AS "table",
+               pg_indexes_size(c.oid)::bigint AS index,
+               greatest(c.reltuples, 0)::bigint AS rows
+        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'r'
+        ORDER BY pg_total_relation_size(c.oid) DESC
+        LIMIT 12`,
+  );
+  const indexes = await queryRows<{ name: string; table: string; bytes: string | number }>(
+    db,
+    sql`SELECT i.relname AS name, t.relname AS "table", pg_relation_size(i.oid)::bigint AS bytes
+        FROM pg_class i
+        JOIN pg_index x ON x.indexrelid = i.oid
+        JOIN pg_class t ON t.oid = x.indrelid
+        JOIN pg_namespace n ON n.oid = t.relnamespace
+        WHERE n.nspname = 'public'
+        ORDER BY pg_relation_size(i.oid) DESC
+        LIMIT 10`,
+  );
   return {
     generatedAt: new Date().toISOString(),
     live,
@@ -68,6 +99,8 @@ export async function status(db: Db): Promise<StatusReport> {
       players: playersCount?.n ?? 0,
       rsEventsEstimate: Number(events?.n ?? 0),
       partitions: partitions.map((p) => p.name),
+      tables: tables.map((t) => ({ name: t.name, totalBytes: Number(t.total), tableBytes: Number(t.table), indexBytes: Number(t.index), rowsEstimate: Number(t.rows) })),
+      indexes: indexes.map((i) => ({ name: i.name, table: i.table, bytes: Number(i.bytes) })),
     },
   };
 }
