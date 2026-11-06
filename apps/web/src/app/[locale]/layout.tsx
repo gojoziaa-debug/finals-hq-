@@ -40,8 +40,15 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   };
 }
 
+/**
+ * Rien n'est précalculé au build : le build ne dépend jamais de la base (une base lente ou injoignable
+ * ne casse plus un déploiement). Chaque page est rendue à la première visite puis servie depuis le cache ISR.
+ * 60 s au plus pour tout ce qui est sous [locale], puisque le bandeau de fraîcheur est dans ce layout.
+ */
+export const revalidate = 60;
+
 export function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }));
+  return [];
 }
 
 async function freshnessOrNull(): Promise<FreshnessInfo | null> {

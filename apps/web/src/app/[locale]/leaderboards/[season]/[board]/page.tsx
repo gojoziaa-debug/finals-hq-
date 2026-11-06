@@ -1,4 +1,4 @@
-import { LEADERBOARDS, type LeaderboardDef } from "@finals-hq/db/catalog";
+import type { LeaderboardDef } from "@finals-hq/db/catalog";
 import { Clock } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -8,11 +8,10 @@ import { InfoChip } from "@/components/hq/InfoChip";
 import { LeaderboardTable } from "@/components/hq/LeaderboardTable";
 import { ErrorState } from "@/components/hq/States";
 import { Link } from "@/i18n/navigation";
-import { routing } from "@/i18n/routing";
 import { boardFromSegments, boardPath, boardShortName, scoreUnit, seasonGroups } from "@/lib/boards";
 import { cn } from "@/lib/cn";
 import { getBoard } from "@/lib/data";
-import { DataUnavailableError, hasDatabase } from "@/lib/db";
+import { DataUnavailableError } from "@/lib/db";
 import { formatDate, formatDateTime, type Locale } from "@/lib/format";
 import type { BoardPayload } from "@/lib/types";
 
@@ -23,12 +22,9 @@ export const dynamicParams = true;
 const INITIAL_ROWS = 100;
 
 /** Les classements en cours sont précalculés au build ; les archives à la première visite. */
+/** Aucun classement précalculé au build (voir le layout [locale]) : rendu à la première visite, puis ISR 60 s. */
 export function generateStaticParams() {
-  if (!hasDatabase()) return [];
-  return LEADERBOARDS.filter((lb) => lb.isLive).flatMap((lb) => {
-    const [, , season, board] = boardPath(lb).split("/");
-    return routing.locales.map((locale) => ({ locale, season: season!, board: board! }));
-  });
+  return [];
 }
 
 type Params = Promise<{ locale: string; season: string; board: string }>;
