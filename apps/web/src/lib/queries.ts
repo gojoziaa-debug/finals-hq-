@@ -5,9 +5,9 @@
  * historique dans player_history, noms courants dans players.embark_name.
  */
 import { queryRows, type Db } from "@finals-hq/db";
-import { leaderboardById, LEADERBOARDS, type LeaderboardDef } from "@finals-hq/db/catalog";
+import { leaderboardById, LEADERBOARDS, SEASONS, type LeaderboardDef } from "@finals-hq/db/catalog";
 import { sql, type SQL } from "drizzle-orm";
-import type { BoardPayload, FollowedRow, FreshnessInfo, HomeData, PlayerData, ProfileLive, ProfilePoint, SearchResult, StatusData } from "./types";
+import type { BoardPayload, ClubData, ClubRow, ClubsData, FollowedRow, FreshnessInfo, HomeData, MoversData, MoverWindow, PastThreshold, PlayerData, ProfileLive, ProfilePoint, SearchResult, StatusData, Top500Data } from "./types";
 
 /** Classement ranked crossplay de la saison en cours (s12-crossplay = 1500), sans dépendre de lib/boards côté tests. */
 export const DEFAULT_LIVE_BOARD_ID = LEADERBOARDS.find((lb) => lb.isLive && lb.kind === "ranked" && lb.platform === "crossplay")!.id;
@@ -428,4 +428,216 @@ export async function loadFollowed(db: Db, ids: string[], liveBoardId: number = 
   return rows
     .map((r) => ({ id: String(r.id), name: r.name, rank: num(r.rank), score: num(r.score), league: num(r.league), club: r.club || null, d24: num(r.d24), d7: num(r.d7) }))
     .sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity) || a.name.localeCompare(b.name));
+}
+
+/* ───────────────────────────── Sprint 4 : ligne top 500, clubs, progressions ───────────────────────────── */
+
+/**
+ * Ligne top 500 d'un classement en cours : RS du 500e à chaque relevé (cutoff_history, un par heure : le dernier
+ * de l'heure), dernier relevé complet, et les joueurs des rangs 495 à 505.
+ */
+export async function loadTop500(db: Db, lb: LeaderboardDef): Promise<Top500Data> {
+  const [series, latest, around, takenAt] = await Promise.all([
+    queryRows<{ t: Date | string; score: number }>(
+      db,
+      sql`SELECT DISTINCT ON (date_trunc('hour', taken_at)) taken_at AS t, rank_500_score AS score
+          FROM cutoff_history WHERE leaderboard_id = ${lb.id} AND rank_500_score IS NOT NULL
+          ORDER BY date_trunc('hour', taken_at), taken_at DESC`,
+    ),
+    queryRows<{ taken_at: Date | string; r500: number | null; r1: number | null; last: number | null; row_count: number; league_counts: Record<string, number> | null }>(
+      db,
+      sql`SELECT taken_at, rank_500_score AS r500, rank_1_score AS r1, last_score AS last, row_count, league_counts
+          FROM cutoff_history WHERE leaderboard_id = ${lb.id} ORDER BY taken_at DESC LIMIT 1`,
+    ),
+    queryRows<{ rank: number; name: string; score: number; league: number | null; club: string | null; d24: number | null; hidden: boolean }>(
+      db,
+      sql`SELECT c.name, c.score, c.league_number AS league, c.club_tag AS club, c.delta_24h AS d24, (p.hidden_at IS NOT NULL) AS hidden,
+                 row_number() OVER (ORDER BY c.score DESC, c.rank ASC, c.player_id)::int AS rank
+          FROM leaderboard_current c JOIN players p ON p.id = c.player_id
+          WHERE c.leaderboard_id = ${lb.id}
+          ORDER BY c.score DESC, c.rank ASC, c.player_id OFFSET 494 LIMIT 11`,
+    ),
+    lastTakenAt(db, lb.id),
+  ]);
+  const l = latest[0];
+  return {
+    takenAt,
+    series: series.map((p) => ({ t: iso(p.t)!, score: Number(p.score) })),
+    latest: l
+      ? {
+          takenAt: iso(l.taken_at)!,
+          rank500: num(l.r500),
+          rank1: num(l.r1),
+          last: num(l.last),
+          rowCount: l.row_count,
+          leagueCounts: Object.entries(l.league_counts ?? {})
+            .filter(([k]) => k !== "unknown")
+            .map(([k, count]) => ({ league: Number(k), count }))
+            .sort((a, b) => a.league - b.league),
+        }
+      : null,
+    around: around.map((r) => ({ rank: Number(r.rank), name: r.hidden ? null : r.name, score: Number(r.score), league: num(r.league), club: r.club || null, d24: num(r.d24) })),
+  };
+}
+
+/**
+ * Classement ranked de référence d'une saison terminée : crossplay s'il existe, sinon le premier ranked archivé.
+ * Seulement les saisons à ligues comparables (S3 et après) : avant, le score n'est pas un RS (fame, cashouts).
+ */
+export function pastRankedBoards(): LeaderboardDef[] {
+  const out: LeaderboardDef[] = [];
+  for (const s of SEASONS) {
+    if (s.isLive || !s.hasComparableLeagues) continue;
+    const ranked = LEADERBOARDS.filter((lb) => lb.seasonId === s.id && lb.kind === "ranked" && lb.mode === "ranked" && !lb.isLive);
+    const pick = ranked.find((lb) => lb.platform === "crossplay") ?? ranked[0];
+    if (pick) out.push(pick);
+  }
+  return out;
+}
+
+/**
+ * Seuils des saisons passées : RS final du 500e (cutoff_history de l'archive) et sa ligue (season_results).
+ * Les barèmes de RS changent d'une saison à l'autre : la page le dit, ces valeurs ne se comparent qu'en ordre de grandeur.
+ */
+export async function loadPastThresholds(db: Db): Promise<PastThreshold[]> {
+  const boards = pastRankedBoards();
+  if (boards.length === 0) return [];
+  const ids = boards.map((b) => b.id);
+  const rows = await queryRows<{ leaderboard_id: number; taken_at: Date | string; r500: number | null; r1: number | null; league500: number | null }>(
+    db,
+    sql`SELECT DISTINCT ON (h.leaderboard_id) h.leaderboard_id, h.taken_at, h.rank_500_score AS r500, h.rank_1_score AS r1,
+               (SELECT s.final_league_number FROM season_results s WHERE s.leaderboard_id = h.leaderboard_id AND s.final_rank = 500 LIMIT 1) AS league500
+        FROM cutoff_history h WHERE h.leaderboard_id IN (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})
+        ORDER BY h.leaderboard_id, h.taken_at DESC`,
+  );
+  const byId = new Map(rows.map((r) => [Number(r.leaderboard_id), r]));
+  const seasonName = new Map(SEASONS.map((s) => [s.id, s.name]));
+  return boards
+    .filter((b) => byId.has(b.id))
+    .map((b) => {
+      const r = byId.get(b.id)!;
+      return { seasonId: b.seasonId!, seasonName: seasonName.get(b.seasonId!) ?? b.seasonId!, leaderboardId: b.id, rank500: num(r.r500), rank1: num(r.r1), league500: num(r.league500), takenAt: iso(r.taken_at)! };
+    })
+    .sort((a, b) => b.leaderboardId - a.leaderboardId);
+}
+
+/**
+ * Classement des clubs : agrégats des membres présents dans le top 10 000 du classement en cours, par tag.
+ * Seuls les membres classés sont comptés (l'API ne donne pas la liste complète d'un club).
+ */
+export async function loadClubs(db: Db, lb: LeaderboardDef): Promise<ClubsData> {
+  const [rows, takenAt] = await Promise.all([
+    queryRows<{ tag: string; name: string | null; members: number; total: string | number; avg: number; best_rank: number; best_name: string | null; best_league: number | null; d7: string | number | null; d7_known: number }>(
+      db,
+      sql`WITH ranked AS (
+            SELECT c.club_tag, c.official_club_name, c.name, c.score, c.league_number, c.delta_7d, (p.hidden_at IS NOT NULL) AS hidden,
+                   row_number() OVER (ORDER BY c.score DESC, c.rank ASC, c.player_id)::int AS pos
+            FROM leaderboard_current c JOIN players p ON p.id = c.player_id
+            WHERE c.leaderboard_id = ${lb.id}
+          )
+          SELECT club_tag AS tag, max(official_club_name) AS name, count(*)::int AS members, sum(score)::bigint AS total,
+                 round(avg(score))::int AS avg, min(pos)::int AS best_rank,
+                 (array_agg(name ORDER BY pos) FILTER (WHERE NOT hidden))[1] AS best_name,
+                 (array_agg(league_number ORDER BY pos))[1] AS best_league,
+                 sum(delta_7d)::bigint AS d7, count(delta_7d)::int AS d7_known
+          FROM ranked WHERE club_tag IS NOT NULL AND club_tag <> ''
+          GROUP BY club_tag
+          ORDER BY sum(score) DESC, min(pos)`,
+    ),
+    lastTakenAt(db, lb.id),
+  ]);
+  return {
+    takenAt,
+    clubs: rows.map(
+      (r): ClubRow => ({
+        tag: r.tag,
+        name: r.name || null,
+        members: r.members,
+        total: Number(r.total),
+        avg: r.avg,
+        bestRank: r.best_rank,
+        bestName: r.best_name,
+        bestLeague: num(r.best_league),
+        d7: r.d7_known > 0 ? Number(r.d7) : null,
+        d7Known: r.d7_known,
+      }),
+    ),
+  };
+}
+
+/** Page d'un club : membres classés (ordre du classement). Tag exact d'abord, sinon sans tenir compte de la casse. */
+export async function loadClub(db: Db, lb: LeaderboardDef, rawTag: string): Promise<ClubData | null> {
+  const tag = rawTag.trim().slice(0, 16);
+  if (!tag) return null;
+  const members = await queryRows<{ tag: string; official: string | null; rank: number; name: string; score: number; league: number | null; d24: number | null; d7: number | null; hidden: boolean }>(
+    db,
+    sql`SELECT * FROM (
+          SELECT c.club_tag AS tag, c.official_club_name AS official, c.name, c.score, c.league_number AS league, c.delta_24h AS d24, c.delta_7d AS d7,
+                 (p.hidden_at IS NOT NULL) AS hidden,
+                 row_number() OVER (ORDER BY c.score DESC, c.rank ASC, c.player_id)::int AS rank
+          FROM leaderboard_current c JOIN players p ON p.id = c.player_id
+          WHERE c.leaderboard_id = ${lb.id}
+        ) t
+        WHERE lower(tag) = lower(${tag})
+        ORDER BY (tag = ${tag}) DESC, rank`,
+  );
+  // Un même tag en deux casses : on garde la casse exacte demandée, sinon la plus représentée (la première triée).
+  const chosen = members.find((m) => m.tag === tag)?.tag ?? members[0]?.tag ?? null;
+  const own = chosen ? members.filter((m) => m.tag === chosen) : [];
+  const [club] = await queryRows<{ tag: string; official_name: string | null; last_seen_at: Date | string }>(
+    db,
+    sql`SELECT tag, official_name, last_seen_at FROM clubs WHERE lower(tag) = lower(${tag}) ORDER BY (tag = ${tag}) DESC, last_seen_at DESC LIMIT 1`,
+  );
+  if (own.length === 0 && !club) return null;
+  return {
+    tag: chosen ?? club!.tag,
+    name: own.find((m) => m.official)?.official ?? club?.official_name ?? null,
+    takenAt: await lastTakenAt(db, lb.id),
+    members: own.map((m) => ({ rank: m.rank, name: m.hidden ? null : m.name, score: Number(m.score), league: num(m.league), d24: num(m.d24), d7: num(m.d7) })),
+    lastSeenAt: iso(club?.last_seen_at),
+  };
+}
+
+export const MOVERS_LIMIT = 100;
+
+/**
+ * Classements dérivés : plus fortes progressions et plus grosses chutes de RS.
+ * 24 h et 7 j : delta_24h / delta_7d du worker (fenêtres glissantes, voir apps/worker/README.md).
+ * Saison : RS actuel moins la première clôture quotidienne relevée du joueur (player_history), ou à défaut
+ * le RS d'avant son premier changement gardé (rs_events) ; « saison » = depuis le début de la collecte.
+ */
+export async function loadMovers(db: Db, lb: LeaderboardDef, window: MoverWindow, direction: "up" | "down", limit = MOVERS_LIMIT): Promise<MoversData> {
+  const delta =
+    window === "24h"
+      ? sql`c.delta_24h`
+      : window === "7d"
+        ? sql`c.delta_7d`
+        : sql`c.score - coalesce(
+            (SELECT u.s FROM player_history h, unnest(h.scores) WITH ORDINALITY AS u(s, i)
+              WHERE h.leaderboard_id = c.leaderboard_id AND h.player_id = c.player_id AND u.s IS NOT NULL ORDER BY u.i LIMIT 1),
+            (SELECT e.score - coalesce(e.score_delta, 0) FROM rs_events e
+              WHERE e.leaderboard_id = c.leaderboard_id AND e.player_id = c.player_id ORDER BY e.taken_at LIMIT 1))`;
+  const [rows, meta] = await Promise.all([
+    queryRows<{ rank: number; name: string; score: number; league: number | null; club: string | null; delta: number }>(
+      db,
+      sql`SELECT rank, name, score, league, club, delta FROM (
+            SELECT row_number() OVER (ORDER BY c.score DESC, c.rank ASC, c.player_id)::int AS rank, c.name, c.score,
+                   c.league_number AS league, c.club_tag AS club, (p.hidden_at IS NOT NULL) AS hidden, (${delta})::int AS delta
+            FROM leaderboard_current c JOIN players p ON p.id = c.player_id
+            WHERE c.leaderboard_id = ${lb.id}
+          ) t
+          WHERE NOT hidden AND delta IS NOT NULL AND ${direction === "up" ? sql`delta > 0` : sql`delta < 0`}
+          ORDER BY ${direction === "up" ? sql`delta DESC` : sql`delta ASC`}, rank
+          LIMIT ${limit}`,
+    ),
+    queryRows<{ start: Date | string | null; t: Date | string | null }>(
+      db,
+      sql`SELECT history_start_day AS start, (SELECT max(taken_at) FROM snapshots WHERE leaderboard_id = ${lb.id} AND status = 'applied') AS t FROM leaderboards WHERE id = ${lb.id}`,
+    ),
+  ]);
+  return {
+    takenAt: iso(meta[0]?.t),
+    historyStart: meta[0]?.start ? dayString(meta[0].start) : null,
+    rows: rows.map((r) => ({ rank: Number(r.rank), name: r.name, score: Number(r.score), league: num(r.league), club: r.club || null, delta: Number(r.delta) })),
+  };
 }

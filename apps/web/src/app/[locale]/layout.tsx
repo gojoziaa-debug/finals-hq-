@@ -88,10 +88,10 @@ export default async function LocaleLayout({ children, params }: { children: Rea
             </div>
           </header>
           <FreshnessBanner takenAt={fresh?.takenAt ?? null} rejected24h={fresh?.rejected24h ?? 0} renderedAt={new Date().toISOString()} />
-          <main id="main" className="mx-auto max-w-container px-4 pb-24 pt-4 md:px-6 md:pb-12 lg:px-8">
+          <main id="main" className="mx-auto max-w-container px-4 pb-24 pt-4 md:px-6 lg:px-8 lg:pb-12">
             {children}
           </main>
-          <footer className="border-t border-border pb-20 md:pb-0">
+          <footer className="border-t border-border pb-20 lg:pb-0">
             <div className="mx-auto max-w-container space-y-1 px-4 py-6 text-body-sm text-text-2 md:px-6 lg:px-8">
               <p>{t("notAffiliated")}</p>
               <p>{t("source")}</p>

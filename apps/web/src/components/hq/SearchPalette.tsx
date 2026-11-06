@@ -3,41 +3,13 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Command } from "cmdk";
 import { Search } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearch } from "@/lib/use-search";
 import { useRouter } from "@/i18n/navigation";
 import { formatNumber, formatRank, type Locale } from "@/lib/format";
 import { playerSlug, splitName } from "@/lib/players";
-import type { SearchResult } from "@/lib/types";
 import { LeagueBadge } from "./LeagueBadge";
 
-type State = { status: "idle" } | { status: "loading" } | { status: "done"; q: string; results: SearchResult[] } | { status: "error"; limited: boolean };
-
-export function useSearch(q: string): State {
-  const [state, setState] = useState<State>({ status: "idle" });
-  const latest = useRef(0);
-  useEffect(() => {
-    const query = q.trim();
-    if (query.length < 2) {
-      setState({ status: "idle" });
-      return;
-    }
-    const id = ++latest.current;
-    setState((s) => (s.status === "done" ? s : { status: "loading" }));
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-        if (id !== latest.current) return;
-        if (!res.ok) return setState({ status: "error", limited: res.status === 429 });
-        const body = (await res.json()) as { results: SearchResult[] };
-        if (id === latest.current) setState({ status: "done", q: query, results: body.results });
-      } catch {
-        if (id === latest.current) setState({ status: "error", limited: false });
-      }
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [q]);
-  return state;
-}
 
 /** Palette ⌘K : joueurs groupés, anciens pseudos signalés, tolérante aux fautes (pg_trgm). */
 export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {

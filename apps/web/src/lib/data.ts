@@ -3,7 +3,8 @@ import type { LeaderboardDef } from "@finals-hq/db/catalog";
 import { unstable_cache } from "next/cache";
 import { DEFAULT_BOARD } from "./boards";
 import { getDb, withTimeout } from "./db";
-import { loadBoard, loadFollowed, loadFreshness, loadHome, loadPlayer, loadStatus, searchPlayers } from "./queries";
+import { loadBoard, loadClub, loadClubs, loadFollowed, loadFreshness, loadHome, loadMovers, loadPastThresholds, loadPlayer, loadStatus, loadTop500, searchPlayers } from "./queries";
+import type { MoverWindow } from "./types";
 
 /**
  * Lectures mises en cache par Next (cache de données partagé entre les pages et les routes API) :
@@ -41,4 +42,20 @@ export function search(q: string, limit?: number) {
 export function getFollowed(ids: string[]) {
   const key = [...new Set(ids)].sort();
   return unstable_cache(() => withTimeout(loadFollowed(getDb(), key), QUERY_BUDGET_MS), ["followed", key.join(",")], { revalidate: LIVE_REVALIDATE, tags: ["players"] })();
+}
+
+/* Sprint 4 */
+export const getTop500 = unstable_cache(() => withTimeout(loadTop500(getDb(), DEFAULT_BOARD), QUERY_BUDGET_MS), ["top500"], { revalidate: LIVE_REVALIDATE, tags: ["top500"] });
+
+/** Seuils figés des saisons passées : une journée, comme les archives. */
+export const getPastThresholds = unstable_cache(() => withTimeout(loadPastThresholds(getDb()), QUERY_BUDGET_MS), ["past-thresholds"], { revalidate: ARCHIVE_REVALIDATE, tags: ["archives"] });
+
+export const getClubs = unstable_cache(() => withTimeout(loadClubs(getDb(), DEFAULT_BOARD), QUERY_BUDGET_MS), ["clubs"], { revalidate: LIVE_REVALIDATE, tags: ["clubs"] });
+
+export function getClub(tag: string) {
+  return unstable_cache(() => withTimeout(loadClub(getDb(), DEFAULT_BOARD, tag), QUERY_BUDGET_MS), ["club", tag], { revalidate: LIVE_REVALIDATE, tags: ["clubs"] })();
+}
+
+export function getMovers(window: MoverWindow, direction: "up" | "down") {
+  return unstable_cache(() => withTimeout(loadMovers(getDb(), DEFAULT_BOARD, window, direction), QUERY_BUDGET_MS), ["movers", window, direction], { revalidate: LIVE_REVALIDATE, tags: ["movers"] })();
 }

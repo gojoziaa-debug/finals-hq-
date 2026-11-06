@@ -3,7 +3,7 @@ import { leaderboardByKey } from "@finals-hq/db/catalog";
 import { createTestDb, type TestDb } from "@finals-hq/db/test";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { loadBoard, loadFollowed, loadFreshness, loadHome, loadPlayer, loadStatus, searchPlayers } from "../../src/lib/queries";
+import { loadBoard, loadClub, loadClubs, loadFollowed, loadFreshness, loadHome, loadMovers, loadPastThresholds, loadPlayer, loadStatus, loadTop500, searchPlayers } from "../../src/lib/queries";
 
 const LIVE = leaderboardByKey("s12-crossplay")!;
 const ARCHIVE = leaderboardByKey("s11-crossplay")!;
@@ -55,7 +55,13 @@ async function seed(db: Db): Promise<void> {
     (${ids.get("Fictif-Alpha#0001")}::bigint, '2026-11-06T09:00:00Z', 50000, 200, 2, ${snap!.id}, ${LIVE.id}, 20)`);
   await db.execute(sql`INSERT INTO cutoff_history (taken_at, snapshot_id, row_count, rank_1_score, rank_500_score, last_score, leaderboard_id, league_counts) VALUES
     ('2026-11-05T09:00:00Z', ${snap!.id}, 4, 52000, 45000, 39000, ${LIVE.id}, '{"16":1,"17":1,"20":2}'),
-    ('2026-11-06T09:30:00Z', ${snap!.id}, 4, 52000, 45250, 39000, ${LIVE.id}, '{"16":1,"17":1,"20":2}')`);
+    ('2026-11-06T09:30:00Z', ${snap!.id}, 4, 52000, 45250, 39000, ${LIVE.id}, '{"16":1,"17":1,"20":2}'),
+    ('2026-11-06T09:10:00Z', ${snap!.id}, 4, 52000, 45200, 39000, ${LIVE.id}, '{"16":1,"17":1,"20":2}'),
+    ('2026-09-10T00:00:00Z', ${archive!.id}, 2, 60000, NULL, 41000, ${ARCHIVE.id}, '{"18":1,"21":1}')`);
+  await db.execute(sql`INSERT INTO clubs (club_uuid, tag, official_name, first_seen_at, last_seen_at) VALUES
+    ('uuid-aaa', 'AAA', 'Club Fictif', '2026-11-05T00:00:00Z', '2026-11-06T09:30:00Z'),
+    ('uuid-old', 'OLD', NULL, '2026-11-01T00:00:00Z', '2026-11-02T00:00:00Z')`);
+  await db.execute(sql`UPDATE leaderboard_current SET official_club_name = 'Club Fictif' WHERE club_tag = 'AAA'`);
 }
 
 describe("read queries (PGlite, synthetic data)", () => {
@@ -136,6 +142,43 @@ describe("read queries (PGlite, synthetic data)", () => {
     expect(await loadFollowed(t.db, [])).toEqual([]);
   });
 
+  it("builds the top 500 line: hourly series, latest cutoff, nobody around the 500th on a tiny board", async () => {
+    const d = await loadTop500(t.db, LIVE);
+    // 09:10 et 09:30 tombent dans la même heure : seul le dernier relevé de l'heure est gardé.
+    expect(d.series).toEqual([{ t: "2026-11-05T09:00:00.000Z", score: 45_000 }, { t: "2026-11-06T09:30:00.000Z", score: 45_250 }]);
+    expect(d.latest).toMatchObject({ rank500: 45_250, rank1: 52_000, last: 39_000, rowCount: 4 });
+    expect(d.around).toEqual([]);
+    expect(d.takenAt).toBe("2026-11-06T09:30:00.000Z");
+  });
+
+  it("lists past seasons' thresholds from the archives", async () => {
+    const past = await loadPastThresholds(t.db);
+    expect(past).toEqual([{ seasonId: "s11", seasonName: "Season 11", leaderboardId: ARCHIVE.id, rank500: null, rank1: 60_000, league500: null, takenAt: "2026-09-10T00:00:00.000Z" }]);
+  });
+
+  it("aggregates clubs from ranked members and loads a club page", async () => {
+    const clubs = await loadClubs(t.db, LIVE);
+    expect(clubs.clubs).toEqual([{ tag: "AAA", name: "Club Fictif", members: 2, total: 90_000, avg: 45_000, bestRank: 2, bestName: "Fictif-Alpha#0001", bestLeague: 20, d7: 900, d7Known: 1 }]);
+    const club = await loadClub(t.db, LIVE, "aaa");
+    expect(club).toMatchObject({ tag: "AAA", name: "Club Fictif", lastSeenAt: "2026-11-06T09:30:00.000Z" });
+    expect(club!.members.map((m) => [m.rank, m.name, m.score])).toEqual([[2, "Fictif-Alpha#0001", 50_000], [3, "Fictif-Charlie#0003", 40_000]]);
+    const old = await loadClub(t.db, LIVE, "OLD");
+    expect(old).toMatchObject({ tag: "OLD", members: [] });
+    expect(await loadClub(t.db, LIVE, "NOPE")).toBeNull();
+    expect(await loadClub(t.db, LIVE, "  ")).toBeNull();
+  });
+
+  it("ranks risers and fallers, never a hidden profile", async () => {
+    const up = await loadMovers(t.db, LIVE, "24h", "up");
+    expect(up.rows.map((r) => [r.name, r.delta])).toEqual([["Fictif-Alpha#0001", 300]]);
+    const down = await loadMovers(t.db, LIVE, "24h", "down");
+    expect(down.rows.map((r) => [r.name, r.delta, r.rank])).toEqual([["Fictif-Bravo#0002", -150, 1]]);
+    // Saison : RS actuel moins la première clôture (Alpha : 50 000 − 49 500).
+    const season = await loadMovers(t.db, LIVE, "season", "up");
+    expect(season.rows.map((r) => [r.name, r.delta])).toEqual([["Fictif-Alpha#0001", 500]]);
+    expect(season.historyStart).toBe("2026-11-05");
+  });
+
   it("reports freshness and status", async () => {
     expect(await loadFreshness(t.db, LIVE.id)).toEqual({ takenAt: "2026-11-06T09:30:00.000Z", rejected24h: 0 });
     const status = await loadStatus(t.db);
@@ -185,5 +228,29 @@ describe.skipIf(!process.env.LOCAL_DATABASE_URL)("read queries on a real local d
     }
     console.log("profile ms", times.map((t) => t.toFixed(1)).join(" "));
     expect(Math.max(...times)).toBeLessThan(150);
+  });
+
+  it("serves the sprint 4 pages from the real data under 300 ms on the database side", async () => {
+    const db = conn!.db;
+    const timed = async <T>(label: string, f: () => Promise<T>): Promise<T> => {
+      await f();
+      const start = performance.now();
+      const out = await f();
+      const ms = performance.now() - start;
+      console.log(`${label} ms`, ms.toFixed(1));
+      expect(ms).toBeLessThan(300);
+      return out;
+    };
+    const top = await timed("top500", () => loadTop500(db, LIVE));
+    expect(top.around.map((r) => r.rank)).toEqual([495, 496, 497, 498, 499, 500, 501, 502, 503, 504, 505]);
+    expect(top.latest?.rank500).toBe(top.around[5]!.score);
+    const past = await timed("past", () => loadPastThresholds(db));
+    expect(past.length).toBeGreaterThanOrEqual(9);
+    const clubs = await timed("clubs", () => loadClubs(db, LIVE));
+    expect(clubs.clubs.length).toBeGreaterThan(1000);
+    const first = clubs.clubs[0]!;
+    const club = await timed("club", () => loadClub(db, LIVE, first.tag));
+    expect(club!.members.length).toBe(first.members);
+    for (const w of ["24h", "7d", "season"] as const) await timed(`movers ${w}`, () => loadMovers(db, LIVE, w, "up"));
   });
 });
