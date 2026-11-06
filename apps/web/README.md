@@ -1,0 +1,63 @@
+# @finals-hq/web
+
+Le site FINALS HQ : Next.js 15 (App Router), Tailwind avec les tokens du design system (phase E), next-intl
+(FR et EN, préfixe d'URL, slugs anglais), lecture seule de la base Postgres remplie par `apps/worker`.
+
+## Pages
+
+| Adresse | Contenu | Cache |
+| --- | --- | --- |
+| `/fr`, `/en` | accueil : top 10, ligne top 500, en forme, répartition par division | ISR 60 s |
+| `/[locale]/leaderboards` | tous les classements (catalogue) | statique |
+| `/[locale]/leaderboards/[season]/[board]` | classement complet : `s12/ranked`, `s12/worldtour`, `s1/ranked-steam`, `events/ce44`… | ISR 60 s (archives : données en cache 24 h) |
+| `/[locale]/search?q=` | recherche (même moteur que la palette Ctrl K) | dynamique, CDN 60 s sur l'API |
+| `/[locale]/players/[name]` | profil minimal (`GOJO-6255` pour `GOJO#6255`) ; profil complet au sprint 3 | ISR 120 s à la demande |
+| `/[locale]/status` | fraîcheur par classement, passages du worker, taille de la base | ISR 60 s |
+| `/[locale]/styleguide` | tokens et composants dans leurs états | dev et prévisualisations seulement |
+| `/api/boards/[id]` | classement complet en colonnes (≈ 445 Ko, ≈ 160 Ko compressé) | CDN 60 s |
+| `/api/search?q=` | 8 meilleurs résultats, 20 requêtes par minute et par IP | CDN 60 s |
+| `/api/health` | 200 si la base répond | aucun |
+
+## Le tableau de classement
+
+- Les 100 premières lignes sont rendues côté serveur (lisibles sans JavaScript, élément LCP) ; les 10 000 lignes
+  arrivent ensuite par `/api/boards/[id]` quand le navigateur est libre.
+- Virtualisé (TanStack Virtual) : une trentaine de lignes dans le DOM quelle que soit la position, colonnes rang et
+  joueur collées à gauche, en-tête collé, défilement horizontal des chiffres sur téléphone.
+- Tri, filtres (ligue, tag de club, pseudo) et position dans l'URL : `?league=d1&club=XYZ&sort=change24h&page=15`.
+- Rang affiché d'un classement en cours = ordre des scores du dernier relevé (les rangs stockés sont ceux du dernier
+  relevé complet). Archives : rang final de l'API, sans colonnes de variation.
+
+## Développer
+
+```bash
+pnpm install
+cp apps/web/.env.example apps/web/.env.local   # puis DATABASE_URL
+pnpm --filter @finals-hq/web dev               # http://localhost:3000
+pnpm --filter @finals-hq/web test              # vitest : requêtes sur PGlite, état du tableau, formats
+```
+
+Base locale avec de vraies données (ce qui a servi à développer le sprint 2) : un Postgres 16 local, puis
+`pnpm worker migrate`, `pnpm worker ingest --data-root <checkout finals-hq-data>` et `pnpm worker import-archives`.
+`LOCAL_DATABASE_URL=… pnpm --filter @finals-hq/web test` mesure alors la recherche sur 478 000 joueurs (critère : moins
+de 100 ms côté base) et le classement S12 complet.
+
+Parcours de bout en bout (téléphone et ordinateur, axe-core, captures dans `tests/e2e/out/`) sur le site lancé :
+
+```bash
+pnpm --filter @finals-hq/web build && pnpm --filter @finals-hq/web start &
+BASE_URL=http://localhost:3000 pnpm --filter @finals-hq/web e2e
+```
+
+## Choix à connaître
+
+- **Thème** : sombre par défaut, posé par un script en tête de page depuis `localStorage` (ou le thème du système)
+  avant le premier rendu. La phase E prévoyait un cookie lu côté serveur ; cela rendait chaque page dynamique et
+  cassait l'ISR, d'où ce script (même résultat : pas de flash).
+- **Sentry** : rien sans `NEXT_PUBLIC_SENTRY_DSN`. Le SDK navigateur est chargé après la page (import dynamique) pour
+  ne pas peser sur le budget de 150 Ko de JavaScript initial ; les erreurs des toutes premières secondes ne sont
+  donc pas remontées côté navigateur (le serveur, lui, est couvert dès le démarrage).
+- **Région** : fonctions Vercel à Francfort (`fra1`, `vercel.json`), à côté de la base Supabase (eu-central-1).
+- **Robots** : tout ce qui n'est pas la production Vercel est en `noindex` (le domaine n'est pas encore choisi).
+- **Accent clair** : `accent-ink` passe de #5E7A00 à #567000 sur le thème clair (4,49:1 → 5,1:1 sur #F4F4F7,
+  mesuré par axe-core). Le thème sombre ne change pas.

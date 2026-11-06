@@ -1,0 +1,5 @@
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.env*.local
+tests/e2e/out/

@@ -1,0 +1,42 @@
+{
+  "name": "@finals-hq/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FINALS HQ website (Next.js 15): leaderboards, search, status. Reads the Postgres filled by apps/worker.",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "e2e": "node tests/e2e/run.mjs"
+  },
+  "dependencies": {
+    "@finals-hq/db": "workspace:*",
+    "@radix-ui/react-dialog": "1.1.15",
+    "@sentry/nextjs": "10.73.0",
+    "@tanstack/react-virtual": "3.13.12",
+    "cmdk": "1.1.1",
+    "drizzle-orm": "^0.45.4",
+    "lucide-react": "0.548.0",
+    "next": "15.5.29",
+    "next-intl": "4.14.9",
+    "postgres": "^4.1.0",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
+    "@types/node": "^22.19.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "autoprefixer": "10.4.21",
+    "axe-core": "4.10.3",
+    "postcss": "8.5.6",
+    "tailwindcss": "3.4.18",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

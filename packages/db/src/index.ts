@@ -1,10 +1,8 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import postgres from "postgres";
+import { SUPABASE_ROOT_2021_CA } from "./certs.ts";
 import * as schema from "./schema.ts";
 
 export { schema };
@@ -40,16 +38,14 @@ export interface Connection {
   close: () => Promise<void>;
 }
 
-const CERTS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "certs");
-
 /**
  * Autorité de certification du pooler Supabase, certificat public (chaîne vérifiée le 6 novembre 2026
  * depuis le PC de l'utilisateur : *.pooler.supabase.com ← Supabase Intermediate 2021 CA ← Supabase
  * Root 2021 CA, empreinte SHA-256 80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA).
- * Si Supabase change de racine, ajouter le nouveau fichier ici : la vérification ne se désactive jamais.
+ * Si Supabase change de racine, ajouter le nouveau certificat dans certs/ et dans certs.ts : la vérification ne se désactive jamais.
  */
 export function supabaseCertificates(): string[] {
-  return ["supabase-prod-ca-2021.crt"].map((name) => readFileSync(join(CERTS_DIR, name), "utf8"));
+  return [SUPABASE_ROOT_2021_CA];
 }
 
 type SslOption = false | { rejectUnauthorized: true; servername: string; ca?: string[] };

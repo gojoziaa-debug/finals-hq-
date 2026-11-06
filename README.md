@@ -13,7 +13,7 @@ collectés dans le dépôt public [finals-hq-data](https://github.com/gojoziaa-d
 | `packages/core` | Logique métier pure et testée (rating, statistiques). Aucune dépendance d'exécution. |
 | `packages/db` | Schéma Postgres (Drizzle), migrations SQL, catalogue des 82 classements, certificat racine Supabase. |
 | `apps/worker` | Ingestion des instantanés vers la base, import des archives, état de la chaîne (`apps/worker/README.md`). |
-| `apps/web` | Site Next.js. À venir. |
+| `apps/web` | Site Next.js : classements, recherche, état des données (`apps/web/README.md`). |
 
 ## Démarrer
 
@@ -23,6 +23,7 @@ pnpm install
 pnpm test        # tests unitaires (vitest ; la base est PGlite, Postgres en mémoire)
 pnpm typecheck   # tsc strict sur chaque package
 pnpm worker status   # état de la base (DATABASE_URL requise, voir apps/worker/.env.example)
+pnpm --filter @finals-hq/web dev   # le site sur http://localhost:3000 (DATABASE_URL dans apps/web/.env.local)
 ```
 
 Base de données : Supabase Postgres (offre gratuite). Les migrations sont dans `packages/db/migrations`

@@ -56,6 +56,13 @@ describe("ssl options", async () => {
     expect(supabase).toMatchObject({ rejectUnauthorized: true, servername: "aws-1-eu-central-1.pooler.supabase.com" });
     expect(supabase && supabase.ca?.length).toBe(1);
     expect(supabaseCertificates()[0]).toContain("BEGIN CERTIFICATE");
+  });
+  it("keeps the embedded root certificate identical to certs/supabase-prod-ca-2021.crt", async () => {
+    const { readFileSync } = await import("node:fs");
+    const file = readFileSync(new URL("../certs/supabase-prod-ca-2021.crt", import.meta.url), "utf8");
+    expect(supabaseCertificates()[0]?.trim()).toBe(file.trim());
+  });
+  it("still refuses to disable verification", () => {
     expect(sslOptionsFor("postgresql://u:p@localhost:5432/db")).toBe(false);
     expect(sslOptionsFor("postgresql://u:p@db.example.org:5432/db")).toEqual({ rejectUnauthorized: true, servername: "db.example.org" });
   });
