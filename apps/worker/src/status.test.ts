@@ -11,7 +11,7 @@ describe("status", () => {
     expect(report.archives).toEqual({ imported: 0, expected: 85 });
     expect(report.database.players).toBe(0);
     expect(report.database.tables.map((t) => t.name)).toContain("players");
-    expect(report.database.indexes.map((i) => i.name)).toContain("player_names_name_trgm_idx");
+    expect(report.database.indexes.map((i) => i.name)).toContain("players_embark_name_trgm_idx");
     for (const t of report.database.tables) expect(t.totalBytes).toBeGreaterThanOrEqual(t.tableBytes + t.indexBytes);
   });
 });

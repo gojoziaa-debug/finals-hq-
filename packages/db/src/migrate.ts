@@ -46,9 +46,37 @@ export async function migrate(db: Db, dir = MIGRATIONS_DIR): Promise<string[]> {
   return applied;
 }
 
-/** Creates the monthly partition of rs_events that holds `day`, if missing. */
+/** Creates the daily partition of rs_events that holds `day`, if missing. */
 export async function ensureRsEventsPartition(db: Db, day: Date): Promise<string> {
   const iso = day.toISOString().slice(0, 10);
   const rows = await queryRows<{ name: string }>(db, sql`SELECT ensure_rs_events_partition(${iso}::date) AS name`);
   return rows[0]?.name ?? "";
+}
+
+const PARTITION_NAME = /^rs_events_(\d{4})_(\d{2})_(\d{2})$/;
+
+/** Daily partitions of rs_events, oldest first, with the UTC day each one holds. */
+export async function listRsEventsPartitions(db: Db): Promise<Array<{ name: string; day: string }>> {
+  const rows = await queryRows<{ name: string }>(db, sql`SELECT relname AS name FROM pg_class WHERE relname ~ '^rs_events_\\d{4}_\\d{2}_\\d{2}$' AND relkind = 'r' ORDER BY relname`);
+  return rows.flatMap((r) => {
+    const m = PARTITION_NAME.exec(r.name);
+    return m ? [{ name: r.name, day: `${m[1]}-${m[2]}-${m[3]}` }] : [];
+  });
+}
+
+/**
+ * Drops the daily partitions older than `keepDays` days before `now` (a whole table drop frees the
+ * space at once, unlike DELETE) and returns their names. Rows stranded in the default partition
+ * before the cutoff are deleted too.
+ */
+export async function pruneRsEventsPartitions(db: Db, keepDays: number, now = new Date()): Promise<string[]> {
+  const cutoff = new Date(now.getTime() - keepDays * 86_400_000).toISOString().slice(0, 10);
+  const dropped: string[] = [];
+  for (const partition of await listRsEventsPartitions(db)) {
+    if (partition.day >= cutoff) continue;
+    await db.execute(sql.raw(`DROP TABLE IF EXISTS ${partition.name}`));
+    dropped.push(partition.name);
+  }
+  await db.execute(sql`DELETE FROM rs_events_default WHERE taken_at < ${cutoff}::date`);
+  return dropped;
 }

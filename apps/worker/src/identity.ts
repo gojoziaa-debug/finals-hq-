@@ -101,10 +101,11 @@ async function insertPlayers(
   return ids;
 }
 
-async function upsertNames(tx: Db, entries: ReadonlyArray<{ playerId: number; row: NormalizedRow }>, at: Date): Promise<void> {
+/** Platform names of every row, plus the former Embark name of a renamed player (the current one lives in players). */
+async function upsertNames(tx: Db, entries: ReadonlyArray<{ playerId: number; row: NormalizedRow; formerName?: string }>, at: Date): Promise<void> {
   const values: Array<typeof playerNames.$inferInsert> = [];
-  for (const { playerId, row } of entries) {
-    values.push({ playerId, kind: "embark", name: row.name, firstSeenAt: at, lastSeenAt: at });
+  for (const { playerId, row, formerName } of entries) {
+    if (formerName) values.push({ playerId, kind: "embark", name: formerName, firstSeenAt: at, lastSeenAt: at });
     for (const kind of PLATFORM_KINDS) {
       const value = row[kind];
       if (value) values.push({ playerId, kind: NAME_KIND[kind], name: value, firstSeenAt: at, lastSeenAt: at });
@@ -115,7 +116,7 @@ async function upsertNames(tx: Db, entries: ReadonlyArray<{ playerId: number; ro
       .insert(playerNames)
       .values(part)
       .onConflictDoUpdate({
-        target: [playerNames.playerId, playerNames.kind, playerNames.name],
+        target: [playerNames.kind, playerNames.name, playerNames.playerId],
         set: {
           firstSeenAt: sql`least(${playerNames.firstSeenAt}, excluded.first_seen_at)`,
           lastSeenAt: sql`greatest(${playerNames.lastSeenAt}, excluded.last_seen_at)`,
@@ -161,7 +162,7 @@ async function addCandidates(
 
 export async function resolveIdentities(tx: Db, rows: readonly NormalizedRow[], ctx: ResolveContext): Promise<Resolution> {
   const result: Resolution = { byName: new Map(), created: 0, renamed: 0, linked: 0, candidates: 0, unlinked: 0 };
-  const named: Array<{ playerId: number; row: NormalizedRow }> = [];
+  const named: Array<{ playerId: number; row: NormalizedRow; formerName?: string }> = [];
   const pairs: Array<{ a: number; b: number; reason: string; confidence: string }> = [];
 
   // Rule 5: identities scoped to this leaderboard.
@@ -254,7 +255,7 @@ export async function resolveIdentities(tx: Db, rows: readonly NormalizedRow[], 
       .where(eq(players.id, renamed.playerId));
     result.byName.set(row.name, renamed.playerId);
     result.renamed++;
-    named.push({ playerId: renamed.playerId, row });
+    named.push({ playerId: renamed.playerId, row, formerName: renamed.name });
   }
   pending = stillPending;
 

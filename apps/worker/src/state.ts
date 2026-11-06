@@ -35,9 +35,18 @@ export function utcDay(at: Date): string {
 }
 
 export function previousUtcDay(day: string): string {
+  return daysBefore(day, 1);
+}
+
+export function daysBefore(day: string, days: number): string {
   const d = new Date(`${day}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
+  d.setUTCDate(d.getUTCDate() - days);
   return utcDay(d);
+}
+
+/** 1-based position of `day` in the arrays of player_history whose first element is `start`. */
+export function dayIndex(day: string, start: string): number {
+  return Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000) + 1;
 }
 
 export interface Cutoffs {

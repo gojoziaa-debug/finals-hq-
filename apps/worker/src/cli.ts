@@ -2,7 +2,7 @@
  * FINALS HQ worker.
  *
  *   node --experimental-strip-types src/cli.ts migrate                      # DIRECT_URL (ou DATABASE_URL)
- *   node --experimental-strip-types src/cli.ts ingest [--data-root ../../data] [--only s12-crossplay]
+ *   node --experimental-strip-types src/cli.ts ingest [--data-root ../../data] [--only s12-crossplay] [--keep-days 8]
  *   node --experimental-strip-types src/cli.ts import-archives [--data-root ../../data] [--only s11-crossplay]
  *   node --experimental-strip-types src/cli.ts status [--json]
  *
@@ -14,7 +14,7 @@ import { resolve } from "node:path";
 import { connect } from "@finals-hq/db";
 import { migrate } from "@finals-hq/db/migrate";
 import { importArchives } from "./archives.ts";
-import { ingestAll, syncCatalog } from "./ingest.ts";
+import { DEFAULT_KEEP_DAYS, ingestAll, syncCatalog } from "./ingest.ts";
 import { DataSource } from "./source.ts";
 import { status } from "./status.ts";
 
@@ -31,11 +31,14 @@ async function main(): Promise<number> {
     options: {
       "data-root": { type: "string" },
       only: { type: "string" },
+      "keep-days": { type: "string" },
       json: { type: "boolean", default: false },
     },
   });
   const command = positionals[0] ?? "status";
   const dataRoot = resolve(values["data-root"] ?? env("DATA_ROOT") ?? "data");
+  const keepDays = Number(values["keep-days"] ?? env("RS_EVENTS_KEEP_DAYS") ?? DEFAULT_KEEP_DAYS);
+  if (!Number.isInteger(keepDays) || keepDays < 1) throw new Error("--keep-days doit être un entier ≥ 1");
 
   if (command === "migrate") {
     const url = env("DIRECT_URL") ?? env("DATABASE_URL");
@@ -59,9 +62,10 @@ async function main(): Promise<number> {
       const source = new DataSource(dataRoot);
       const summary =
         command === "ingest"
-          ? await ingestAll(db, source, { only: values.only, log })
+          ? await ingestAll(db, source, { only: values.only, log, keepDays })
           : await importArchives(db, source, { only: values.only, log });
       log(`${command} : ${summary.applied} appliqué(s), ${summary.rejected} rejeté(s), ${summary.skipped} ignoré(s), fraîcheur ${summary.freshnessAt ?? "—"}`);
+      if (summary.prunedPartitions.length > 0) log(`partitions purgées : ${summary.prunedPartitions.join(", ")}`);
       for (const error of summary.errors) log(`ERREUR ${error}`);
       if (values.json) console.log(JSON.stringify(summary, null, 2));
       return summary.status === "ok" ? 0 : 1;
@@ -69,6 +73,7 @@ async function main(): Promise<number> {
     if (command === "status") {
       const report = await status(db);
       console.log(JSON.stringify(report, null, 2));
+      if (report.database.alert) log(`ALERTE taille de base ${Math.round((report.database.sizeBytes ?? 0) / 1e6)} Mo (limite ${report.database.limitBytes / 1e6} Mo)`);
       return 0;
     }
     throw new Error(`commande inconnue : ${command}`);

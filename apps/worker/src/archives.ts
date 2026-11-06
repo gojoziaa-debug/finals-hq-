@@ -34,7 +34,7 @@ export async function importArchives(db: Db, source: DataSource, options: Archiv
       errors.push(`${key} : classement absent du catalogue`);
       continue;
     }
-    const [known] = await db.select({ id: snapshots.id }).from(snapshots).where(eq(snapshots.leaderboardKey, key)).limit(1);
+    const [known] = await db.select({ id: snapshots.id }).from(snapshots).where(eq(snapshots.leaderboardId, lb.id)).limit(1);
     if (known) {
       outcomes.push({ key, file, status: "skipped" });
       continue;
@@ -66,7 +66,7 @@ async function importOne(db: Db, source: DataSource, lb: LeaderboardDef, file: s
       const [inserted] = await tx
         .insert(snapshots)
         .values({
-          leaderboardKey: lb.key,
+          leaderboardId: lb.id,
           kind: "archive",
           sourceFile: file,
           sha256: parsed.sha256,
@@ -85,7 +85,7 @@ async function importOne(db: Db, source: DataSource, lb: LeaderboardDef, file: s
         const playerId = resolution.byName.get(row.name);
         if (playerId === undefined) continue;
         values.push({
-          leaderboardKey: lb.key,
+          leaderboardId: lb.id,
           playerId,
           finalRank: row.rank,
           finalScore: row.score,
@@ -114,7 +114,7 @@ async function importOne(db: Db, source: DataSource, lb: LeaderboardDef, file: s
       await db
         .insert(snapshots)
         .values({
-          leaderboardKey: lb.key,
+          leaderboardId: lb.id,
           kind: "archive",
           sourceFile: file,
           sha256: snapshot?.sha256 ?? "",

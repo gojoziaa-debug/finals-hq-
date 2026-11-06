@@ -20,7 +20,15 @@ export interface SeasonDef {
   isLive: boolean;
 }
 
+export type HistoryMode = "events" | "daily";
+
 export interface LeaderboardDef {
+  /**
+   * Identifiant numérique stable, stocké en base à la place de la clé texte (2 octets au lieu de 27).
+   * ordinal de saison × 100 + rang du mode × 4 + plateforme ; 9000 + pour les classements spéciaux
+   * et les événements. Ne jamais renuméroter : les tables de volume y font référence.
+   */
+  id: number;
   /** `<id>-<plateforme>` ou `<id>` seul : la clé des fichiers du collecteur. */
   key: string;
   upstreamId: string;
@@ -36,6 +44,11 @@ export interface LeaderboardDef {
   schemaVersion: string;
   hasLeagues: boolean;
   isLive: boolean;
+  /**
+   * `events` : chaque changement de score est conservé 8 jours dans rs_events (ranked, World Tour, sponsor) ;
+   * `daily` : seulement la clôture quotidienne compactée de player_history (modes casual).
+   */
+  history: HistoryMode;
 }
 
 export const SEASONS: readonly SeasonDef[] = [
@@ -79,6 +92,22 @@ const MODE_NAMES: Record<string, string> = {
   orbitalhitters: "Orbital Hitters",
   soloshowdown: "Solo Showdown",
 };
+
+/** Rang de chaque mode dans l'identifiant numérique (ajouter en fin de liste, ne jamais réordonner). */
+const MODE_ORDER = [
+  "ranked", "original", "worldtour", "sponsor", "terminalattack", "powershift", "quickcash", "bankit", "teamdeathmatch",
+  "heavyhitters", "blastoff", "cashball", "head2head", "ghoulrush", "heavenorelse", "pointbreak", "starlighthollow",
+  "the24hourgauntlet", "creatorgauntlet", "orbitalhitters", "soloshowdown",
+] as const;
+const PLATFORM_ORDER: Record<string, number> = { crossplay: 0, steam: 1, xbox: 2, psn: 3 };
+
+function leaderboardId(season: SeasonDef, mode: string, platform: string | null): number {
+  const modeIndex = MODE_ORDER.indexOf(mode as (typeof MODE_ORDER)[number]);
+  if (modeIndex === -1) throw new Error(`mode ${mode} absent de MODE_ORDER`);
+  const platformIndex = platform === null ? 0 : PLATFORM_ORDER[platform];
+  if (platformIndex === undefined) throw new Error(`plateforme ${platform} inconnue`);
+  return season.ordinal * 100 + modeIndex * 4 + platformIndex;
+}
 
 /** Ids par saison, dans l'ordre du dépôt leonlarsson/the-finals-api (commit a59da60). */
 const SEASON_IDS: Record<string, readonly string[]> = {
@@ -165,6 +194,7 @@ function build(): LeaderboardDef[] {
       }
       for (const platform of platformsOf(season.id, upstreamId)) {
         out.push({
+          id: leaderboardId(season, mode, platform),
           key: platform ? `${upstreamId}-${platform}` : upstreamId,
           upstreamId,
           platform,
@@ -176,15 +206,16 @@ function build(): LeaderboardDef[] {
           schemaVersion,
           hasLeagues,
           isLive: season.isLive,
+          history: season.isLive && (kind === "ranked" || kind === "worldtour" || kind === "sponsor") ? "events" : "daily",
         });
       }
     }
   }
   out.push(
-    { key: "orf-crossplay", upstreamId: "orf", platform: "crossplay", kind: "special", mode: "orf", name: "ORF", seasonId: null, scoreField: "score", schemaVersion: "SPECIAL", hasLeagues: false, isLive: false },
-    { key: "the-finals-crossplay", upstreamId: "the-finals", platform: "crossplay", kind: "special", mode: "the-finals", name: "THE FINALS (tournament wins)", seasonId: null, scoreField: "tournamentWins", schemaVersion: "SPECIAL", hasLeagues: false, isLive: false },
-    { key: "ce44", upstreamId: "ce44", platform: null, kind: "event", mode: "community-event", name: "Community event 44", seasonId: null, scoreField: "score", schemaVersion: "EVENT", hasLeagues: false, isLive: false },
-    { key: "ce48", upstreamId: "ce48", platform: null, kind: "event", mode: "community-event", name: "Community event 48", seasonId: null, scoreField: "score", schemaVersion: "EVENT", hasLeagues: false, isLive: false },
+    { id: 9001, key: "orf-crossplay", upstreamId: "orf", platform: "crossplay", kind: "special", mode: "orf", name: "ORF", seasonId: null, scoreField: "score", schemaVersion: "SPECIAL", hasLeagues: false, isLive: false, history: "daily" },
+    { id: 9002, key: "the-finals-crossplay", upstreamId: "the-finals", platform: "crossplay", kind: "special", mode: "the-finals", name: "THE FINALS (tournament wins)", seasonId: null, scoreField: "tournamentWins", schemaVersion: "SPECIAL", hasLeagues: false, isLive: false, history: "daily" },
+    { id: 9044, key: "ce44", upstreamId: "ce44", platform: null, kind: "event", mode: "community-event", name: "Community event 44", seasonId: null, scoreField: "score", schemaVersion: "EVENT", hasLeagues: false, isLive: false, history: "daily" },
+    { id: 9048, key: "ce48", upstreamId: "ce48", platform: null, kind: "event", mode: "community-event", name: "Community event 48", seasonId: null, scoreField: "score", schemaVersion: "EVENT", hasLeagues: false, isLive: false, history: "daily" },
   );
   return out;
 }
@@ -192,9 +223,14 @@ function build(): LeaderboardDef[] {
 export const LEADERBOARDS: readonly LeaderboardDef[] = build();
 
 const BY_KEY = new Map(LEADERBOARDS.map((lb) => [lb.key, lb]));
+const BY_ID = new Map(LEADERBOARDS.map((lb) => [lb.id, lb]));
 
 export function leaderboardByKey(key: string): LeaderboardDef | undefined {
   return BY_KEY.get(key);
+}
+
+export function leaderboardById(id: number): LeaderboardDef | undefined {
+  return BY_ID.get(id);
 }
 
 export function seasonById(id: string): SeasonDef | undefined {

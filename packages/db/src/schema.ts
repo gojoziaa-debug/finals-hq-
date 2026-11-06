@@ -1,6 +1,7 @@
 /**
- * Schéma Drizzle de FINALS HQ. La vérité est dans migrations/*.sql ; ce fichier le reflète pour
- * typer les requêtes. `rs_events` est partitionnée par mois (voir ensure_rs_events_partition).
+ * Schéma Drizzle de FINALS HQ. La vérité est dans migrations/*.sql ; ce fichier reflète l'état après
+ * la dernière migration pour typer les requêtes. `rs_events` est partitionnée par jour
+ * (voir ensure_rs_events_partition) et purgée par le worker.
  */
 import {
   bigint,
@@ -31,7 +32,8 @@ export const seasons = pgTable("seasons", {
 });
 
 export const leaderboards = pgTable("leaderboards", {
-  key: text("key").primaryKey(),
+  id: smallint("id").primaryKey(),
+  key: text("key").notNull().unique(),
   upstreamId: text("upstream_id").notNull(),
   platform: text("platform"),
   kind: text("kind").notNull(),
@@ -42,6 +44,8 @@ export const leaderboards = pgTable("leaderboards", {
   schemaVersion: text("schema_version").notNull(),
   hasLeagues: boolean("has_leagues").notNull().default(false),
   isLive: boolean("is_live").notNull().default(false),
+  history: text("history").notNull().default("daily"),
+  historyStartDay: date("history_start_day"),
 });
 
 export const players = pgTable(
@@ -62,16 +66,17 @@ export const players = pgTable(
   (t) => [index("players_embark_name_idx").on(t.embarkName)],
 );
 
+/** Platform names and former Embark names; the current Embark name lives in players. */
 export const playerNames = pgTable(
   "player_names",
   {
-    playerId: big("player_id").notNull().references(() => players.id),
     kind: text("kind").notNull(),
     name: text("name").notNull(),
+    playerId: big("player_id").notNull().references(() => players.id),
     firstSeenAt: tz("first_seen_at").notNull(),
     lastSeenAt: tz("last_seen_at").notNull(),
   },
-  (t) => [primaryKey({ columns: [t.playerId, t.kind, t.name] }), index("player_names_kind_name_idx").on(t.kind, t.name)],
+  (t) => [primaryKey({ columns: [t.kind, t.name, t.playerId] }), index("player_names_player_idx").on(t.playerId)],
 );
 
 export const identityCandidates = pgTable(
@@ -107,7 +112,7 @@ export const snapshots = pgTable(
   "snapshots",
   {
     id: big("id").generatedAlwaysAsIdentity().primaryKey(),
-    leaderboardKey: text("leaderboard_key").notNull().references(() => leaderboards.key),
+    leaderboardId: smallint("leaderboard_id").notNull().references(() => leaderboards.id),
     kind: text("kind").notNull(),
     sourceFile: text("source_file").notNull(),
     baseFile: text("base_file"),
@@ -125,78 +130,76 @@ export const snapshots = pgTable(
     ingestionRunId: big("ingestion_run_id").references(() => ingestionRuns.id),
     ingestedAt: tz("ingested_at").notNull().defaultNow(),
   },
-  (t) => [unique().on(t.leaderboardKey, t.sourceFile), index("snapshots_key_taken_idx").on(t.leaderboardKey, t.takenAt)],
+  (t) => [unique().on(t.leaderboardId, t.sourceFile), index("snapshots_board_taken_idx").on(t.leaderboardId, t.takenAt)],
 );
 
 export const rsEvents = pgTable(
   "rs_events",
   {
-    leaderboardKey: text("leaderboard_key").notNull(),
     playerId: big("player_id").notNull(),
     takenAt: tz("taken_at").notNull(),
-    score: big("score").notNull(),
-    scoreDelta: big("score_delta"),
+    score: integer("score").notNull(),
+    scoreDelta: integer("score_delta"),
     rank: integer("rank").notNull(),
+    snapshotId: integer("snapshot_id").notNull(),
+    leaderboardId: smallint("leaderboard_id").notNull(),
     leagueNumber: smallint("league_number"),
     clubTag: text("club_tag"),
-    snapshotId: big("snapshot_id").notNull(),
   },
-  (t) => [primaryKey({ columns: [t.leaderboardKey, t.playerId, t.takenAt] }), index("rs_events_player_idx").on(t.playerId, t.takenAt)],
+  (t) => [primaryKey({ columns: [t.leaderboardId, t.playerId, t.takenAt] }), index("rs_events_player_idx").on(t.playerId, t.takenAt)],
 );
 
-export const rankDaily = pgTable(
-  "rank_daily",
+/** Daily closes as arrays: element i = close of day leaderboards.history_start_day + i - 1. */
+export const playerHistory = pgTable(
+  "player_history",
   {
-    leaderboardKey: text("leaderboard_key").notNull(),
     playerId: big("player_id").notNull(),
-    day: date("day").notNull(),
-    rank: integer("rank").notNull(),
-    score: big("score").notNull(),
-    leagueNumber: smallint("league_number"),
+    leaderboardId: smallint("leaderboard_id").notNull(),
+    scores: integer("scores").array().notNull(),
+    ranks: smallint("ranks").array().notNull(),
+    leagueNumbers: smallint("league_numbers").array().notNull(),
   },
-  (t) => [primaryKey({ columns: [t.leaderboardKey, t.playerId, t.day] }), index("rank_daily_player_idx").on(t.playerId, t.day)],
+  (t) => [primaryKey({ columns: [t.leaderboardId, t.playerId] }), index("player_history_player_idx").on(t.playerId)],
 );
 
 export const leaderboardCurrent = pgTable(
   "leaderboard_current",
   {
-    leaderboardKey: text("leaderboard_key").notNull().references(() => leaderboards.key),
     playerId: big("player_id").notNull().references(() => players.id),
-    rank: integer("rank").notNull(),
-    score: big("score").notNull(),
-    leagueNumber: smallint("league_number"),
-    league: text("league"),
-    clubTag: text("club_tag"),
-    clubUuid: text("club_uuid"),
-    officialClubName: text("official_club_name"),
-    raw: jsonb("raw").$type<Record<string, unknown>>().notNull(),
     firstSeenAt: tz("first_seen_at").notNull(),
     lastChangeAt: tz("last_change_at").notNull(),
     updatedAt: tz("updated_at").notNull(),
-    delta24h: big("delta_24h"),
-    delta7d: big("delta_7d"),
+    score: integer("score").notNull(),
+    rank: integer("rank").notNull(),
+    delta24h: integer("delta_24h"),
+    delta7d: integer("delta_7d"),
+    leaderboardId: smallint("leaderboard_id").notNull().references(() => leaderboards.id),
+    leagueNumber: smallint("league_number"),
+    name: text("name").notNull(),
+    clubTag: text("club_tag"),
+    clubUuid: text("club_uuid"),
+    officialClubName: text("official_club_name"),
+    extra: jsonb("extra").$type<Record<string, unknown>>(),
   },
-  (t) => [primaryKey({ columns: [t.leaderboardKey, t.playerId] }), index("leaderboard_current_order_idx").on(t.leaderboardKey, t.score, t.rank)],
+  (t) => [primaryKey({ columns: [t.leaderboardId, t.playerId] }), index("leaderboard_current_order_idx").on(t.leaderboardId, t.score, t.rank)],
 );
 
 export const seasonResults = pgTable(
   "season_results",
   {
-    leaderboardKey: text("leaderboard_key").notNull().references(() => leaderboards.key),
     playerId: big("player_id").notNull().references(() => players.id),
+    snapshotId: big("snapshot_id").notNull().references(() => snapshots.id),
+    finalScore: integer("final_score").notNull(),
     finalRank: integer("final_rank").notNull(),
-    finalScore: big("final_score").notNull(),
+    leaderboardId: smallint("leaderboard_id").notNull().references(() => leaderboards.id),
     finalLeagueNumber: smallint("final_league_number"),
     finalLeague: text("final_league"),
     clubTag: text("club_tag"),
     clubUuid: text("club_uuid"),
     officialClubName: text("official_club_name"),
-    peakScore: big("peak_score"),
-    peakAt: tz("peak_at"),
     extra: jsonb("extra").$type<Record<string, unknown>>(),
-    snapshotId: big("snapshot_id").notNull().references(() => snapshots.id),
   },
-  (t) => [primaryKey({ columns: [t.leaderboardKey, t.playerId] }), index("season_results_player_idx").on(t.playerId)],
+  (t) => [primaryKey({ columns: [t.leaderboardId, t.playerId] }), index("season_results_player_idx").on(t.playerId)],
 );
 
 export const clubs = pgTable("clubs", {
@@ -210,17 +213,17 @@ export const clubs = pgTable("clubs", {
 export const cutoffHistory = pgTable(
   "cutoff_history",
   {
-    leaderboardKey: text("leaderboard_key").notNull().references(() => leaderboards.key),
     takenAt: tz("taken_at").notNull(),
     snapshotId: big("snapshot_id").notNull().references(() => snapshots.id),
     rowCount: integer("row_count").notNull(),
-    rank1Score: big("rank_1_score"),
-    rank500Score: big("rank_500_score"),
-    lastScore: big("last_score"),
+    rank1Score: integer("rank_1_score"),
+    rank500Score: integer("rank_500_score"),
+    lastScore: integer("last_score"),
+    leaderboardId: smallint("leaderboard_id").notNull().references(() => leaderboards.id),
     leagueCounts: jsonb("league_counts").$type<Record<string, number>>(),
     projection: jsonb("projection").$type<Record<string, unknown>>(),
   },
-  (t) => [primaryKey({ columns: [t.leaderboardKey, t.takenAt] })],
+  (t) => [primaryKey({ columns: [t.leaderboardId, t.takenAt] })],
 );
 
 export const hiddenProfiles = pgTable("hidden_profiles", {

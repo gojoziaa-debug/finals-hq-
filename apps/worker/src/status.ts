@@ -14,6 +14,10 @@ export interface LeaderboardStatus {
   rejectedFiles: number;
 }
 
+/** Supabase Free: 500 MB of database, averaged over the month; the worker warns from 450 MB. */
+export const DATABASE_LIMIT_BYTES = 500_000_000;
+export const DATABASE_ALERT_BYTES = 450_000_000;
+
 export interface StatusReport {
   generatedAt: string;
   live: LeaderboardStatus[];
@@ -21,6 +25,9 @@ export interface StatusReport {
   lastRuns: Array<{ id: number; command: string; status: string; startedAt: string; finishedAt: string | null; applied: number; rejected: number; error: string | null }>;
   database: {
     sizeBytes: number | null;
+    limitBytes: number;
+    /** True when the database is above DATABASE_ALERT_BYTES: time to prune or shrink. */
+    alert: boolean;
     players: number;
     rsEventsEstimate: number;
     partitions: string[];
@@ -36,11 +43,11 @@ export async function status(db: Db): Promise<StatusReport> {
     const [last] = await db
       .select({ file: snapshots.sourceFile, takenAt: snapshots.takenAt, kind: snapshots.kind })
       .from(snapshots)
-      .where(and(eq(snapshots.leaderboardKey, lb.key), eq(snapshots.status, "applied")))
+      .where(and(eq(snapshots.leaderboardId, lb.id), eq(snapshots.status, "applied")))
       .orderBy(desc(snapshots.takenAt))
       .limit(1);
-    const [rows] = await db.select({ n: sql<number>`count(*)::int` }).from(leaderboardCurrent).where(eq(leaderboardCurrent.leaderboardKey, lb.key));
-    const [rejected] = await db.select({ n: sql<number>`count(*)::int` }).from(snapshots).where(and(eq(snapshots.leaderboardKey, lb.key), eq(snapshots.status, "rejected")));
+    const [rows] = await db.select({ n: sql<number>`count(*)::int` }).from(leaderboardCurrent).where(eq(leaderboardCurrent.leaderboardId, lb.id));
+    const [rejected] = await db.select({ n: sql<number>`count(*)::int` }).from(snapshots).where(and(eq(snapshots.leaderboardId, lb.id), eq(snapshots.status, "rejected")));
     live.push({
       key: lb.key,
       name: lb.name,
@@ -51,12 +58,12 @@ export async function status(db: Db): Promise<StatusReport> {
       rejectedFiles: rejected?.n ?? 0,
     });
   }
-  const [archives] = await db.select({ n: sql<number>`count(distinct leaderboard_key)::int` }).from(snapshots).where(and(eq(snapshots.kind, "archive"), eq(snapshots.status, "applied")));
+  const [archives] = await db.select({ n: sql<number>`count(distinct leaderboard_id)::int` }).from(snapshots).where(and(eq(snapshots.kind, "archive"), eq(snapshots.status, "applied")));
   const runs = await db.select().from(ingestionRuns).orderBy(desc(ingestionRuns.id)).limit(5);
   const [size] = await queryRows<{ bytes: string | number | null }>(db, sql`SELECT pg_database_size(current_database())::bigint AS bytes`);
   const [playersCount] = await queryRows<{ n: number }>(db, sql`SELECT count(*)::int AS n FROM players`);
-  const [events] = await queryRows<{ n: string | number | null }>(db, sql`SELECT coalesce(sum(greatest(reltuples, 0)), 0)::bigint AS n FROM pg_class WHERE relname LIKE 'rs_events_%' AND relkind = 'r'`);
-  const partitions = await queryRows<{ name: string }>(db, sql`SELECT relname AS name FROM pg_class WHERE relname LIKE 'rs_events_%' AND relkind = 'r' ORDER BY relname`);
+  const [events] = await queryRows<{ n: string | number | null }>(db, sql`SELECT coalesce(sum(greatest(reltuples, 0)), 0)::bigint AS n FROM pg_class WHERE relname LIKE 'rs\_events\_%' AND relkind = 'r'`);
+  const partitions = await queryRows<{ name: string }>(db, sql`SELECT relname AS name FROM pg_class WHERE relname LIKE 'rs\_events\_%' AND relkind = 'r' ORDER BY relname`);
   const tables = await queryRows<{ name: string; total: string | number; table: string | number; index: string | number; rows: string | number }>(
     db,
     sql`SELECT c.relname AS name,
@@ -96,6 +103,8 @@ export async function status(db: Db): Promise<StatusReport> {
     })),
     database: {
       sizeBytes: size?.bytes === null || size?.bytes === undefined ? null : Number(size.bytes),
+      limitBytes: DATABASE_LIMIT_BYTES,
+      alert: size?.bytes !== null && size?.bytes !== undefined && Number(size.bytes) > DATABASE_ALERT_BYTES,
       players: playersCount?.n ?? 0,
       rsEventsEstimate: Number(events?.n ?? 0),
       partitions: partitions.map((p) => p.name),

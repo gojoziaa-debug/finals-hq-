@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LEADERBOARDS, SEASONS, leaderboardByKey, leagueName, upstreamPath } from "./catalog.ts";
+import { LEADERBOARDS, SEASONS, leaderboardById, leaderboardByKey, leagueName, upstreamPath } from "./catalog.ts";
 
 describe("catalog", () => {
   it("lists the 82 leaderboard ids and 2 community events of the verified API", () => {
@@ -21,6 +21,20 @@ describe("catalog", () => {
     expect(LEADERBOARDS.filter((lb) => lb.isLive).map((lb) => lb.upstreamId)).toEqual([
       "s12", "s12sponsor", "s12worldtour", "s12powershift", "s12quickcash", "s12teamdeathmatch", "s12pointbreak", "s12soloshowdown",
     ]);
+  });
+  it("gives every leaderboard a stable, unique numeric id and a history mode", () => {
+    expect(new Set(LEADERBOARDS.map((lb) => lb.id)).size).toBe(LEADERBOARDS.length);
+    expect(LEADERBOARDS.every((lb) => Number.isInteger(lb.id) && lb.id > 0 && lb.id < 32768)).toBe(true);
+    // Pinned values: changing them would orphan every row of the volume tables.
+    expect(leaderboardByKey("cb1")!.id).toBe(100);
+    expect(leaderboardByKey("s1-psn")!.id).toBe(403);
+    expect(leaderboardByKey("s3original-crossplay")!.id).toBe(604);
+    expect(leaderboardByKey("s12-crossplay")!.id).toBe(1500);
+    expect(leaderboardByKey("s12sponsor-crossplay")!.id).toBe(1512);
+    expect(leaderboardByKey("s12soloshowdown-crossplay")!.id).toBe(1580);
+    expect(leaderboardByKey("ce48")!.id).toBe(9048);
+    expect(leaderboardById(1500)?.key).toBe("s12-crossplay");
+    expect(LEADERBOARDS.filter((lb) => lb.history === "events").map((lb) => lb.key)).toEqual(["s12-crossplay", "s12sponsor-crossplay", "s12worldtour-crossplay"]);
   });
   it("builds upstream paths and league names", () => {
     expect(upstreamPath(leaderboardByKey("s12-crossplay")!)).toBe("/v1/leaderboard/s12/crossplay");
