@@ -10,11 +10,12 @@ ignoré, donc le worker peut tourner aussi souvent qu'on veut.
 pnpm --filter @finals-hq/worker worker migrate                       # applique packages/db/migrations (DIRECT_URL)
 pnpm --filter @finals-hq/worker worker ingest --data-root ../../data # chaînes full + deltas de state/ ; --keep-days 8 pour la purge de rs_events
 pnpm --filter @finals-hq/worker worker import-archives --data-root ../../data   # seasons/ → season_results, une fois
+pnpm --filter @finals-hq/worker worker rating [--force]              # Rating v1 : au plus un calcul par heure ; rapport de calibration en Markdown
 pnpm --filter @finals-hq/worker worker status                        # JSON : dernier relevé par classement, derniers passages, taille de la base
 pnpm --filter @finals-hq/worker test                                 # vitest sur Postgres en mémoire (PGlite)
 ```
 
-Variables : voir `.env.example`. Le worker ne lit que `DATABASE_URL`, `DIRECT_URL`, `DATA_ROOT` et `RS_EVENTS_KEEP_DAYS`.
+Variables : voir `.env.example`. Le worker ne lit que `DATABASE_URL`, `DIRECT_URL`, `DATA_ROOT`, `RS_EVENTS_KEEP_DAYS` et `RATING_MIN_INTERVAL_MIN` (55 par défaut).
 
 ## Ce que fait un passage `ingest`
 
@@ -50,6 +51,17 @@ de quota sur Supabase Free (moyenne mensuelle, au-delà le projet passe en lectu
 | `leaderboard_current` sans copie JSON de la ligne API (reconstruite depuis les colonnes + `extra`) | −30 Mo |
 
 `worker status` renvoie `database.alert = true` au-delà de 450 Mo et liste les plus grosses relations et index.
+
+## Rating (sprint 5)
+
+`worker rating` note chaque joueur du ranked en cours (`ratedBoards()`, aujourd'hui `s12-crossplay`) avec `@finals-hq/core/rating` :
+
+1. charge, une requête à la fois, l'état courant (rang = ordre du tableau), les clôtures de `player_history`, les événements des 31 derniers jours de `rs_events` (8 gardés en pratique) et les saisons ranked archivées ;
+2. mesure les références de population (médiane et MAD par fenêtre 24 h / 7 j / 30 j, distribution des reculs moyens, seuil d'anomalie au 99,9e centile **sur les seuls relevés espacés de 20 min au plus** : après un trou de collecte une variation cumule des dizaines de matchs) ;
+3. remplace `ratings` en une transaction et ajoute une ligne à `rating_runs` (références en jsonb, purgées après 60 jours) ;
+4. écrit le rapport de calibration (réel vs simulation de la phase D, notes par ligue, dix premiers, joueurs suivis, variations inhabituelles) dans le journal et dans le résumé du job.
+
+Le site ne montre la note qu'avec `RATING_PUBLIC = true` (apps/web/src/lib/rating.ts) **et** sept jours de relevés ; les previews Vercel l'affichent déjà. Mesuré en local le 6 nov. 2026 sur l'historique réel rejoué : 10 000 joueurs notés en 1,6 s.
 
 ## Workflow GitHub Actions
 
