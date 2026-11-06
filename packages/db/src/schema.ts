@@ -146,7 +146,7 @@ export const rsEvents = pgTable(
     leagueNumber: smallint("league_number"),
     clubTag: text("club_tag"),
   },
-  (t) => [primaryKey({ columns: [t.leaderboardId, t.playerId, t.takenAt] }), index("rs_events_player_idx").on(t.playerId, t.takenAt)],
+  (t) => [primaryKey({ columns: [t.leaderboardId, t.playerId, t.takenAt] })],
 );
 
 /** Daily closes as arrays: element i = close of day leaderboards.history_start_day + i - 1. */
