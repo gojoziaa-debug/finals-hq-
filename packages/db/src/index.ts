@@ -48,11 +48,29 @@ export function supabaseCertificates(): string[] {
   return [SUPABASE_ROOT_2021_CA];
 }
 
+/**
+ * Lit DATABASE_URL sans jamais recopier sa valeur dans l'erreur (elle contient le mot de passe et finirait
+ * dans les journaux de build). Attendu : postgresql://utilisateur:motdepasse@hôte:port/base.
+ */
+export function parseDatabaseUrl(url: string): URL {
+  let parsed: URL | null = null;
+  try {
+    parsed = new URL(url.trim());
+  } catch {
+    parsed = null;
+  }
+  if (!parsed || (parsed.protocol !== "postgresql:" && parsed.protocol !== "postgres:") || !parsed.hostname) {
+    const hint = /^["']/.test(url.trim()) ? " (retire les guillemets)" : /^[A-Z_]+=/.test(url.trim()) ? " (retire le « NOM= » devant)" : "";
+    throw new Error(`DATABASE_URL invalide${hint} : attendu postgresql://utilisateur:motdepasse@hôte:port/base`);
+  }
+  return parsed;
+}
+
 type SslOption = false | { rejectUnauthorized: true; servername: string; ca?: string[] };
 
 /** TLS strict partout, sauf en local. postgres.js désactive la vérification avec `ssl: "require"`, d'où cet objet explicite. */
 export function sslOptionsFor(url: string): SslOption {
-  const host = new URL(url).hostname;
+  const host = parseDatabaseUrl(url).hostname;
   if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
   if (host.endsWith(".supabase.com") || host.endsWith(".supabase.co")) {
     return { rejectUnauthorized: true, servername: host, ca: supabaseCertificates() };
@@ -66,10 +84,11 @@ export function sslOptionsFor(url: string): SslOption {
  */
 export function connect(url: string, options: { max?: number } = {}): Connection {
   if (!url) throw new Error("DATABASE_URL manquante");
-  const client = postgres(url, {
+  parseDatabaseUrl(url);
+  const client = postgres(url.trim(), {
     prepare: false,
     max: options.max ?? 4,
-    ssl: sslOptionsFor(url),
+    ssl: sslOptionsFor(url.trim()),
     connect_timeout: 20,
     idle_timeout: 30,
   });
