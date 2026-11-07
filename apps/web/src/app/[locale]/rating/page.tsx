@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { InfoChip } from "@/components/hq/InfoChip";
 import { LeagueBadge } from "@/components/hq/LeagueBadge";
@@ -23,7 +24,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  return { title: t("ratingTitle"), description: t("ratingDescription", { season: LIVE_SEASON.name }), alternates: { canonical: `/${locale}/rating`, languages: { fr: "/fr/rating", en: "/en/rating" } } };
+  return { title: t("ratingTitle"), description: t("ratingDescription", { season: LIVE_SEASON.name }), alternates: alternates(locale, "/rating") };
 }
 
 /**

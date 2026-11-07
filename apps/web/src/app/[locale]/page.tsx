@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
 import { ArrowRight } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonClasses } from "@/components/hq/Button";
@@ -18,6 +20,11 @@ import { playerSlug, splitName } from "@/lib/players";
 import type { HomeData } from "@/lib/types";
 
 export const revalidate = 60;
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return { alternates: alternates(locale, "/") };
+}
 
 const BAR: Record<LeagueTier, string> = {
   bronze: "bg-league-bronze/60",

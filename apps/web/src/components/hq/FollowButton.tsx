@@ -2,10 +2,11 @@
 import { Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { beacon } from "@/lib/beacon";
 import { cn } from "@/lib/cn";
 import { isFollowed, toggleFollow, useFollowing } from "@/lib/following";
 
-/** ☆ Suivre / ★ Suivi : liste locale du navigateur (page Suivi). Rien n'est envoyé au serveur. */
+/** ☆ Suivre / ★ Suivi : liste locale du navigateur (page Suivi). Seul un compteur anonyme « follow » part au serveur. */
 export function FollowButton({ id, name, compact = false, className }: { id: string; name: string; compact?: boolean; className?: string }) {
   const t = useTranslations("follow");
   const list = useFollowing();
@@ -14,6 +15,7 @@ export function FollowButton({ id, name, compact = false, className }: { id: str
   const click = () => {
     const ok = toggleFollow({ id, name });
     setError(!ok);
+    if (ok && !on) beacon("follow");
   };
   return (
     <button

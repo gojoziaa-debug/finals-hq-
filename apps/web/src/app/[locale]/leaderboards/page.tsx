@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { InfoChip } from "@/components/hq/InfoChip";
 import { Link } from "@/i18n/navigation";
@@ -7,7 +8,7 @@ import { boardPath, boardShortName, seasonGroups } from "@/lib/boards";
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  return { title: t("leaderboardsTitle"), alternates: { canonical: `/${locale}/leaderboards`, languages: { fr: "/fr/leaderboards", en: "/en/leaderboards" } } };
+  return { title: t("leaderboardsTitle"), alternates: alternates(locale, "/leaderboards") };
 }
 
 /** Index de tous les classements : saison en cours d'abord, archives ensuite. Page statique (catalogue). */

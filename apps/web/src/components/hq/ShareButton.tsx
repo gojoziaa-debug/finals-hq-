@@ -2,14 +2,16 @@
 import { Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { beacon } from "@/lib/beacon";
 import { cn } from "@/lib/cn";
 
-/** ↪ Partager : menu de partage du téléphone quand il existe, sinon copie du lien. La story arrive avec les cartes OG (sprint 6). */
+/** ↪ Partager : menu de partage du téléphone quand il existe, sinon copie du lien. L'aperçu du lien est la carte OG de la page (sprint 6). */
 export function ShareButton({ title, compact = false, className }: { title: string; compact?: boolean; className?: string }) {
   const t = useTranslations("share");
   const [done, setDone] = useState(false);
   const share = async () => {
     const url = window.location.href.split("#")[0]!;
+    beacon("share");
     try {
       if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
         await navigator.share({ title, url });

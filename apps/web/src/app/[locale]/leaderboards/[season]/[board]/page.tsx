@@ -1,6 +1,7 @@
 import type { LeaderboardDef } from "@finals-hq/db/catalog";
 import { Clock } from "lucide-react";
 import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { SeasonSelect } from "@/components/hq/BoardPicker";
@@ -45,7 +46,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   return {
     title: t("leaderboardTitle", { board: boardShortName(lb), season: seasonLabel(lb, tl) }),
     description: t("leaderboardDescription", { board: boardShortName(lb), season: seasonLabel(lb, tl) }),
-    alternates: { canonical: `/${locale}${path}`, languages: { fr: `/fr${path}`, en: `/en${path}` } },
+    alternates: alternates(locale, path),
   };
 }
 

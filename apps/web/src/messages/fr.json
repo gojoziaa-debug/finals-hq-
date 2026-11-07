@@ -67,7 +67,12 @@
     "compare": "Comparer",
     "more": "Plus",
     "rating": "Rating",
-    "methodology": "Méthodologie"
+    "methodology": "Méthodologie",
+    "about": "À propos",
+    "privacy": "Confidentialité",
+    "legal": "Mentions légales",
+    "hide": "Masquer mon profil",
+    "footer": "Liens du pied de page"
   },
   "units": {
     "rs": "RS",
@@ -304,7 +309,8 @@
     "neverSeenLive": "Pas vu dans le classement ranked de la {season} depuis le début de la collecte ({date}).",
     "followToKnow": "Suis ce joueur : il apparaîtra dans ta page Suivi dès son entrée.",
     "places": "{count, plural, one {place} other {places}}",
-    "compare": "Comparer"
+    "compare": "Comparer",
+    "hideOwn": "C'est ton profil ? Tu peux le masquer."
   },
   "career": {
     "records": "Records",
@@ -339,7 +345,11 @@
   "share": {
     "share": "Partager",
     "copied": "Lien copié",
-    "hint": "Copier le lien du profil"
+    "hint": "Copier le lien du profil",
+    "story": "Story",
+    "storyHint": "Image verticale 1080×1920 pour Instagram ou TikTok",
+    "storyReady": "Image prête",
+    "card": "Carte"
   },
   "following": {
     "title": "Joueurs suivis",
@@ -533,7 +543,9 @@
     "compare": "2 à 4 joueurs côte à côte",
     "status": "Fraîcheur des relevés et santé de la collecte",
     "rating": "La note sur 99, le Momentum et la Consistance",
-    "methodology": "Formules, poids et exemple vivant du Rating"
+    "methodology": "Formules, poids et exemple vivant du Rating",
+    "about": "Le projet, la source des données, la non-affiliation",
+    "privacy": "Tes données, tes droits, masquer ton profil"
   },
   "rating": {
     "title": "Rating FINALS HQ",

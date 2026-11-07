@@ -3,7 +3,7 @@ import type { LeaderboardDef } from "@finals-hq/db/catalog";
 import { unstable_cache } from "next/cache";
 import { DEFAULT_BOARD } from "./boards";
 import { getDb, withTimeout } from "./db";
-import { loadBoard, loadClub, loadClubs, loadFollowed, loadFreshness, loadHome, loadMovers, loadPastThresholds, loadPlayer, loadStatus, loadTop500, searchPlayers } from "./queries";
+import { loadBoard, loadClub, loadClubs, loadFollowed, loadFreshness, loadHome, loadMovers, loadPastThresholds, loadPlayer, loadSitemap, loadStatus, loadTop500, searchPlayers } from "./queries";
 import { loadPlayerRating, loadRatingBoard, loadRatingExample, loadRatingRun } from "./rating-queries";
 import type { MoverWindow, RatingSort } from "./types";
 
@@ -78,3 +78,6 @@ export const getRatingExample = unstable_cache(() => withTimeout(loadRatingExamp
 export function ratingEnv() {
   return { vercelEnv: process.env.VERCEL_ENV, nodeEnv: process.env.NODE_ENV };
 }
+
+/* Sprint 6 : sitemaps, une heure de cache (Google ne repasse pas plus souvent). */
+export const getSitemap = unstable_cache(() => withTimeout(loadSitemap(getDb(), DEFAULT_BOARD.id), QUERY_BUDGET_MS), ["sitemap"], { revalidate: 3600, tags: ["sitemap"] });

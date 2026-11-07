@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Top500Chart } from "@/components/charts/Top500Chart";
 import { DeltaChip } from "@/components/hq/DeltaChip";
@@ -22,7 +23,7 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  return { title: t("top500Title"), description: t("top500Description", { season: LIVE_SEASON.name }), alternates: { canonical: `/${locale}/top-500`, languages: { fr: "/fr/top-500", en: "/en/top-500" } } };
+  return { title: t("top500Title"), description: t("top500Description", { season: LIVE_SEASON.name }), alternates: alternates(locale, "/top-500") };
 }
 
 /**

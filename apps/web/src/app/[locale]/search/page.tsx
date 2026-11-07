@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Beacon } from "@/components/hq/Beacon";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { LeagueBadge } from "@/components/hq/LeagueBadge";
 import { EmptyState, ErrorState } from "@/components/hq/States";
@@ -51,7 +52,12 @@ export default async function SearchPage({ params, searchParams }: { params: Pro
       </form>
       {q.length < 2 && <p className="text-body-sm text-text-2">{t("hint")}</p>}
       {failed && <ErrorState title={te("title")} body={t("error")} />}
-      {results && results.length === 0 && <EmptyState title={t("none", { q })} body={t("noneHint")} />}
+      {results && results.length === 0 && (
+        <>
+          <EmptyState title={t("none", { q })} body={t("noneHint")} />
+          <Beacon event="search_empty" />
+        </>
+      )}
       {results && results.length > 0 && (
         <section aria-label={t("results", { count: results.length, q })}>
           <p className="mb-2 text-body-sm text-text-2">{t("results", { count: results.length, q })}</p>

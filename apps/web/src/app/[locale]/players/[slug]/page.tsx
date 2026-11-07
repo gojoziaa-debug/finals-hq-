@@ -16,6 +16,8 @@ import { RelativeTime } from "@/components/hq/RelativeTime";
 import { RatingPanel } from "@/components/hq/RatingPanel";
 import { RsChart } from "@/components/hq/RsChart";
 import { ShareButton } from "@/components/hq/ShareButton";
+import { StoryButton } from "@/components/hq/StoryButton";
+import { Beacon } from "@/components/hq/Beacon";
 import { EmptyState } from "@/components/hq/States";
 import { StickyPlayerBar } from "@/components/hq/StickyPlayerBar";
 import { buttonClasses } from "@/components/hq/Button";
@@ -31,6 +33,8 @@ import { league as leagueOf } from "@/lib/league";
 import { namesFromSlug, playerSlug, splitName } from "@/lib/players";
 import { activeDays, career as careerOf, DAY_MS, daysSince, heatmap, lastPoint, peak, rankDelta, topPercent } from "@/lib/profile";
 import type { PlayerData } from "@/lib/types";
+import { cardPath } from "@/lib/cards";
+import { alternates } from "@/lib/site";
 
 export const revalidate = 120;
 
@@ -55,17 +59,22 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const candidates = namesFromSlug(slug);
   const player = await playerOrNull(candidates);
   const name = player && !player.hidden ? player.name : (candidates[0] ?? slug);
-  const canonical = `/${locale}/players/${player && !player.hidden ? playerSlug(player.name) : slug}`;
+  const key = player && !player.hidden ? playerSlug(player.name) : slug;
   const main = player?.current.find((c) => c.leaderboardId === DEFAULT_BOARD.id);
   const l = locale as Locale;
-  const description = main
+  const description = player?.hidden
+    ? t("hiddenTitle")
+    : main
     ? t("playerDescription", { name, rank: formatRank(main.rank, l), score: formatNumber(main.score, l), league: leagueOf(main.league)?.name ?? "—", season: LIVE_SEASON.name })
     : t("playerDescriptionNone", { name });
+  const title = player?.hidden ? t("hiddenTitle") : t("playerTitle", { name });
   return {
-    title: player?.hidden ? t("hiddenTitle") : t("playerTitle", { name }),
+    title,
     description,
-    alternates: { canonical, languages: { fr: canonical.replace(/^\/(fr|en)/, "/fr"), en: canonical.replace(/^\/(fr|en)/, "/en") } },
-    openGraph: { title: t("playerTitle", { name }), description },
+    alternates: alternates(locale, `/players/${key}`),
+    // Carte de partage (sprint 6) : image générée avec le rang et la courbe ; carte générique si masqué ou inconnu.
+    openGraph: { title, description, images: [{ url: cardPath("player", key, locale), width: 1200, height: 630, alt: title }] },
+    twitter: { card: "summary_large_image" },
     robots: player?.hidden ? { index: false, follow: false } : undefined,
   };
 }
@@ -241,6 +250,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
               <span className="sr-only sm:not-sr-only">{t("compare")}</span>
             </Link>
             <ShareButton title={`${player.name} · FINALS HQ`} compact />
+            <StoryButton src={cardPath("player", playerSlug(player.name), locale, "story")} filename={`finals-hq-${decodeURIComponent(playerSlug(player.name))}-story.png`} />
           </div>
         </div>
 
@@ -302,6 +312,13 @@ export default async function PlayerPage({ params }: { params: Params }) {
       </header>
 
       <ProfileTabs overview={overview} career={<CareerPanel career={career} playerName={player.name} />} careerCount={career.seasons.length} />
+
+      <p className="text-body-sm text-text-2">
+        <Link href={`/privacy/request?player=${playerSlug(player.name)}`} className="underline hover:text-text">
+          {t("hideOwn")}
+        </Link>
+      </p>
+      <Beacon event="profile_view" />
 
     </div>
   );

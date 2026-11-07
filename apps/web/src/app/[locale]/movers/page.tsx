@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { DeltaChip } from "@/components/hq/DeltaChip";
 import { LeagueBadge } from "@/components/hq/LeagueBadge";
@@ -22,7 +23,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  return { title: t("moversTitle"), description: t("moversDescription", { season: LIVE_SEASON.name }), alternates: { canonical: `/${locale}/movers`, languages: { fr: "/fr/movers", en: "/en/movers" } } };
+  return { title: t("moversTitle"), description: t("moversDescription", { season: LIVE_SEASON.name }), alternates: alternates(locale, "/movers") };
 }
 
 /**

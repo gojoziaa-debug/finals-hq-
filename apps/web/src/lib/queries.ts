@@ -641,3 +641,22 @@ export async function loadMovers(db: Db, lb: LeaderboardDef, window: MoverWindow
     rows: rows.map((r) => ({ rank: Number(r.rank), name: r.name, score: Number(r.score), league: num(r.league), club: r.club || null, delta: Number(r.delta) })),
   };
 }
+
+/**
+ * Sitemaps (sprint 6) : joueurs visibles du classement en cours (pseudo Embark actuel, comme l'URL canonique
+ * du profil) et clubs qui y ont au moins un membre. Deux requêtes, l'une après l'autre (pooler en mode transaction).
+ */
+export async function loadSitemap(db: Db, liveBoardId: number): Promise<{ takenAt: string | null; players: string[]; clubs: string[] }> {
+  const players = await queryRows<{ name: string }>(
+    db,
+    sql`SELECT p.embark_name AS name FROM leaderboard_current c JOIN players p ON p.id = c.player_id
+        WHERE c.leaderboard_id = ${liveBoardId} AND p.hidden_at IS NULL AND p.merged_into IS NULL AND p.linkable
+        ORDER BY c.score DESC, c.player_id`,
+  );
+  const clubs = await queryRows<{ tag: string }>(
+    db,
+    sql`SELECT DISTINCT club_tag AS tag FROM leaderboard_current WHERE leaderboard_id = ${liveBoardId} AND club_tag IS NOT NULL AND club_tag <> '' ORDER BY 1`,
+  );
+  const [fresh] = await queryRows<{ t: Date | string | null }>(db, sql`SELECT max(taken_at) AS t FROM snapshots WHERE leaderboard_id = ${liveBoardId} AND status = 'applied'`);
+  return { takenAt: fresh?.t ? new Date(fresh.t).toISOString() : null, players: players.map((r) => r.name), clubs: clubs.map((r) => r.tag) };
+}

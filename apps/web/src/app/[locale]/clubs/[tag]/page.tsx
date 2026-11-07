@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
+import { cardPath } from "@/lib/cards";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { DeltaChip } from "@/components/hq/DeltaChip";
 import { KpiCard } from "@/components/hq/KpiCard";
@@ -36,7 +38,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const tag = decodeTag(raw);
   const t = await getTranslations({ locale, namespace: "meta" });
   const path = `/clubs/${encodeURIComponent(tag)}`;
-  return { title: t("clubTitle", { tag }), description: t("clubDescription", { tag, season: LIVE_SEASON.name }), alternates: { canonical: `/${locale}${path}`, languages: { fr: `/fr${path}`, en: `/en${path}` } } };
+  return { title: t("clubTitle", { tag }), description: t("clubDescription", { tag, season: LIVE_SEASON.name }), alternates: alternates(locale, path), openGraph: { images: [{ url: cardPath("club", encodeURIComponent(tag), locale), width: 1200, height: 630, alt: t("clubTitle", { tag }) }] }, twitter: { card: "summary_large_image" } };
 }
 
 /** Page club (phase E) : en-tête, KPI (RS moyen, meilleur rang, progression 7 j), membres classés avec leur ligue. */

@@ -1,0 +1,57 @@
+name: privacy
+
+# Demandes de masquage (RGPD). Deux usages :
+#  - à la main (Actions → privacy → Run workflow) : appliquer, refuser ou lever un masquage ;
+#  - deux fois par jour : vérifier qu'aucune demande n'attend depuis plus de 24 h (le run échoue et GitHub
+#    t'envoie un e-mail) et effacer les coordonnées des demandes décidées il y a plus de 30 jours.
+# Ce dépôt est public, donc ses journaux aussi : la commande ne montre jamais un contact ni un message en clair.
+on:
+  schedule:
+    - cron: "17 7,19 * * *"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "list, apply (masquer), reject (refuser), lift (lever un masquage), check"
+        type: choice
+        options: [list, apply, reject, lift, check]
+        default: list
+      player:
+        description: "Joueur : pseudo exact (GOJO#6255), slug (GOJO-6255) ou identifiant"
+        required: false
+        default: ""
+      reason:
+        description: "Raison (obligatoire pour reject ; ne mets aucune donnée personnelle ici, le journal est public)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: privacy
+  cancel-in-progress: false
+
+jobs:
+  privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: privacy ${{ inputs.action || 'check' }}
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+          ACTION: ${{ inputs.action || 'check' }}
+          PLAYER: ${{ inputs.player }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+          args=(privacy "$ACTION")
+          if [ -n "$PLAYER" ]; then args+=("$PLAYER"); fi
+          if [ -n "$REASON" ]; then args+=(--reason "$REASON"); fi
+          pnpm --filter @finals-hq/worker worker "${args[@]}"

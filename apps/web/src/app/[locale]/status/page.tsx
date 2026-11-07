@@ -1,5 +1,6 @@
 import { leaderboardById } from "@finals-hq/db/catalog";
 import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { InfoChip } from "@/components/hq/InfoChip";
 import { RelativeTime } from "@/components/hq/RelativeTime";
@@ -17,7 +18,7 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  return { title: t("statusTitle") };
+  return { title: t("statusTitle"), alternates: alternates(locale, "/status") };
 }
 
 /** Page vers laquelle pointe le FreshnessBanner : heure du dernier relevé par tableau, passages du worker, taille de la base. */
