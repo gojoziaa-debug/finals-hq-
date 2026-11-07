@@ -15,7 +15,7 @@ describe("migrations", () => {
 
   it("splits files on statement breakpoints", async () => {
     const files = await readMigrations();
-    expect(files.map((f) => f.name)).toEqual(["0001_init.sql", "0002_compact.sql", "0003_rs_events_index_diet.sql", "0004_rating.sql"]);
+    expect(files.map((f) => f.name)).toEqual(["0001_init.sql", "0002_compact.sql", "0003_rs_events_index_diet.sql", "0004_rating.sql", "0005_privacy_usage.sql"]);
     expect(files[1]!.statements.length).toBeGreaterThan(20);
   });
 

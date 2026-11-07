@@ -190,7 +190,7 @@ export function playerCard(card: PlayerCard, locale: Locale, format: CardFormat,
   const nameMax = story ? 190 : 132;
   const statSize = story ? 112 : 76;
   const stats = (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: story ? 72 : 56, rowGap: story ? 56 : 24 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: story ? 72 : 56, rowGap: story ? 56 : 24 }}>
       <Stat label={t.rank} value={ranked ? formatRank(card.rank!, locale) : "—"} color={C.volt} size={statSize} />
       <Stat label={t.rs} value={ranked ? formatNumber(card.score!, locale) : "—"} size={statSize} />
       {card.d24 !== null && <Stat label={t.d24} value={formatSigned(card.d24, locale)} color={deltaColor(card.d24)} size={statSize * 0.72} />}
