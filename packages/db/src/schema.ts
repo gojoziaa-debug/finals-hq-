@@ -233,7 +233,24 @@ export const hiddenProfiles = pgTable("hidden_profiles", {
   proof: text("proof"),
   appliedAt: tz("applied_at"),
   reason: text("reason"),
+  /** Migration 0005 : pending → applied | rejected ; applied → lifted (masquage levé à la demande du joueur). */
+  status: text("status").notNull().default("pending"),
+  contact: text("contact"),
+  message: text("message"),
+  locale: text("locale"),
+  decidedAt: tz("decided_at"),
 });
+
+/** Migration 0005 : compteurs d'audience agrégés par jour, sans identifiant de visiteur. */
+export const usageCounters = pgTable(
+  "usage_counters",
+  {
+    day: date("day").notNull(),
+    event: text("event").notNull(),
+    n: integer("n").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.day, t.event] })],
+);
 
 /** Migration 0004 : un calcul du Rating par classement, avec les références de population du moment. */
 export const ratingRuns = pgTable(

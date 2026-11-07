@@ -28,7 +28,7 @@ describe("migrations", () => {
     const names = tables.map((r) => r.table_name);
     for (const expected of [
       "seasons", "leaderboards", "players", "player_names", "identity_candidates", "snapshots", "rs_events",
-      "player_history", "leaderboard_current", "season_results", "clubs", "cutoff_history", "ingestion_runs", "hidden_profiles", "rating_runs", "ratings",
+      "player_history", "leaderboard_current", "season_results", "clubs", "cutoff_history", "ingestion_runs", "hidden_profiles", "rating_runs", "ratings", "usage_counters",
     ]) expect(names).toContain(expected);
     expect(names).not.toContain("rank_daily");
   });
