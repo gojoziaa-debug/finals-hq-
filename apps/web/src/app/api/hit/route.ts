@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return new NextResponse(null, { status: 204 });
   }
-  if (isUsageEvent(event) && event !== "card" && event !== "story" && event !== "hide_request") {
+  if (isUsageEvent(event) && event !== "card" && event !== "story" && event !== "hide_request" && event !== "video") {
     await withTimeout(bumpUsage(getDb(), event), 4_000).catch(() => undefined);
   }
   return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });

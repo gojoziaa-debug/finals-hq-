@@ -6,6 +6,7 @@ import type { ClubSummary } from "./clubs";
 import { formatDateTime, formatNumber, formatRank, formatSigned, type Locale } from "./format";
 import { league as leagueOf, type LeagueTier } from "./league";
 import { splitName } from "./players";
+import type { SupporterRole } from "./supporters";
 
 /**
  * Cartes de partage (sprint 6) : 1200×630 pour Discord, X, WhatsApp (Open Graph) et 1080×1920 pour les stories.
@@ -18,7 +19,7 @@ export const SIZES: Record<CardFormat, { width: number; height: number }> = { og
 /** 10 min au CDN (phase F : économiser les fonctions), puis resservie pendant le recalcul. */
 export const CARD_CACHE = "public, max-age=600, s-maxage=600, stale-while-revalidate=3600";
 
-const C = {
+export const C = {
   bg: "#0B0B0F",
   surface: "#14141A",
   raised: "#1C1C24",
@@ -30,7 +31,7 @@ const C = {
   up: "#3DDC84",
   down: "#FF5C5C",
 };
-const LEAGUE: Record<LeagueTier, string> = { bronze: "#C47A3A", silver: "#A9B4C2", gold: "#F2C14E", platinum: "#2FD1C6", diamond: "#7AA2FF", ruby: "#FF4D6A" };
+export const LEAGUE: Record<LeagueTier, string> = { bronze: "#C47A3A", silver: "#A9B4C2", gold: "#F2C14E", platinum: "#2FD1C6", diamond: "#7AA2FF", ruby: "#FF4D6A" };
 
 type FontDef = { name: string; data: ArrayBuffer; weight: 500 | 600 | 700 | 800; style: "normal" };
 let fontsPromise: Promise<FontDef[]> | null = null;
@@ -64,8 +65,8 @@ function loadFonts(): Promise<FontDef[]> {
 }
 
 const T = {
-  fr: { rank: "Rang", rs: "RS", league: "Ligue", d24: "24 h", d7: "7 j", outside: "Hors du top 10 000", takenAt: "Relevé", notAffiliated: "Projet de fans, non affilié à Embark Studios", members: "Membres classés", avg: "RS moyen", best: "Meilleur rang", top500: "Dans le top 500", club: "Club", tagline: "Classements, profils et ligne top 500 de THE FINALS, relevés toutes les 10 minutes.", season: "Ranked · Saison 12", vs: "VS", unknown: "n/d" },
-  en: { rank: "Rank", rs: "RS", league: "League", d24: "24h", d7: "7d", outside: "Outside the top 10,000", takenAt: "Taken", notAffiliated: "Fan project, not affiliated with Embark Studios", members: "Ranked members", avg: "Average RS", best: "Best rank", top500: "In the top 500", club: "Club", tagline: "THE FINALS leaderboards, profiles and top 500 line, refreshed every 10 minutes.", season: "Ranked · Season 12", vs: "VS", unknown: "n/a" },
+  fr: { rank: "Rang", rs: "RS", league: "Ligue", d24: "24 h", d7: "7 j", outside: "Hors du top 10 000", takenAt: "Relevé", notAffiliated: "Projet de fans, non affilié à Embark Studios", members: "Membres classés", avg: "RS moyen", best: "Meilleur rang", top500: "Dans le top 500", club: "Club", tagline: "Classements, profils et ligne top 500 de THE FINALS, relevés toutes les 10 minutes.", season: "Ranked · Saison 12", vs: "VS", unknown: "n/d", supporter: "Supporter", creator: "Créateur" },
+  en: { rank: "Rank", rs: "RS", league: "League", d24: "24h", d7: "7d", outside: "Outside the top 10,000", takenAt: "Taken", notAffiliated: "Fan project, not affiliated with Embark Studios", members: "Ranked members", avg: "Average RS", best: "Best rank", top500: "In the top 500", club: "Club", tagline: "THE FINALS leaderboards, profiles and top 500 line, refreshed every 10 minutes.", season: "Ranked · Season 12", vs: "VS", unknown: "n/a", supporter: "Supporter", creator: "Creator" },
 } as const;
 
 export interface PlayerCard {
@@ -79,6 +80,8 @@ export interface PlayerCard {
   /** Scores chronologiques pour la courbe (nulls = hors classement, ignorés). */
   series: Array<number | null>;
   takenAt: string | null;
+  /** Badge du palier Patreon (sprint 7), tenu à la main dans src/data/supporters.json. */
+  supporter: SupporterRole | null;
 }
 
 export interface ClubCard {
@@ -89,7 +92,7 @@ export interface ClubCard {
   takenAt: string | null;
 }
 
-function host(siteUrl: string): string {
+export function host(siteUrl: string): string {
   try {
     return new URL(siteUrl).host;
   } catch {
@@ -97,7 +100,7 @@ function host(siteUrl: string): string {
   }
 }
 
-function Wordmark({ size }: { size: number }) {
+export function Wordmark({ size }: { size: number }) {
   return (
     <div style={{ display: "flex", fontFamily: "Display", fontWeight: 800, fontSize: size, letterSpacing: 1, color: C.text, lineHeight: 1 }}>
       FINALS<span style={{ color: C.volt, marginLeft: size * 0.22 }}>HQ</span>
@@ -127,12 +130,12 @@ function Stat({ label, value, color, size }: { label: string; value: string; col
   );
 }
 
-function deltaColor(v: number | null) {
+export function deltaColor(v: number | null) {
   return v === null || v === 0 ? C.text2 : v > 0 ? C.up : C.down;
 }
 
 /** Courbe RS : polyligne Volt sur les points connus, mise à l'échelle sur min–max. */
-function Spark({ series, width, height }: { series: Array<number | null>; width: number; height: number }) {
+export function Spark({ series, width, height }: { series: Array<number | null>; width: number; height: number }) {
   const pts = series.map((s, i) => [i, s] as const).filter((p): p is readonly [number, number] => p[1] !== null);
   if (pts.length < 2) return null;
   const xs = pts.map((p) => p[0]);
@@ -154,7 +157,7 @@ function Spark({ series, width, height }: { series: Array<number | null>; width:
 }
 
 /** Taille du pseudo selon sa longueur : un pseudo de 20 caractères tient sur une ligne. */
-function nameSize(base: string, max: number): number {
+export function nameSize(base: string, max: number): number {
   const n = [...base].length;
   return Math.round(n <= 8 ? max : n <= 12 ? max * 0.8 : n <= 16 ? max * 0.64 : max * 0.5);
 }
@@ -178,6 +181,17 @@ function LeagueChip({ league: n, size }: { league: number | null; size: number }
     <div style={{ display: "flex", alignItems: "center", gap: size * 0.35, fontFamily: "Display", fontWeight: 800, fontSize: size, color, textTransform: "uppercase" }}>
       <div style={{ display: "flex", width: size * 0.55, height: size * 0.55, borderRadius: 4, background: color, transform: "rotate(45deg)" }} />
       {l.name}
+    </div>
+  );
+}
+
+/** Pastille Supporter / Créateur des cartes (sprint 7) : contour Volt, sans icône (Satori ne charge pas lucide). */
+export function SupporterChip({ role, locale, size }: { role: SupporterRole | null; locale: Locale; size: number }) {
+  if (!role) return null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: size * 0.4, padding: `${size * 0.3}px ${size * 0.7}px`, border: `3px solid ${C.volt}`, borderRadius: 999, fontFamily: "Sans", fontWeight: 600, fontSize: size, color: C.volt, textTransform: "uppercase", letterSpacing: 2 }}>
+      <div style={{ display: "flex", width: size * 0.5, height: size * 0.5, borderRadius: 999, background: C.volt }} />
+      {T[locale][role]}
     </div>
   );
 }
@@ -211,6 +225,7 @@ export function playerCard(card: PlayerCard, locale: Locale, format: CardFormat,
         <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
           {ranked ? <LeagueChip league={card.league} size={story ? 60 : 38} /> : <span style={{ fontFamily: "Display", fontWeight: 700, fontSize: story ? 60 : 38, color: C.text2, textTransform: "uppercase" }}>{t.outside}</span>}
           {card.club && <span style={{ fontFamily: "Mono", fontWeight: 500, fontSize: story ? 44 : 28, color: C.text2 }}>[{card.club}]</span>}
+          <SupporterChip role={card.supporter} locale={locale} size={story ? 30 : 20} />
         </div>
       </div>
       {story ? (

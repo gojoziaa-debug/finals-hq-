@@ -1,6 +1,7 @@
 /** Données des cartes de partage, tirées des mêmes lectures que les pages (pur, testé). */
 import { DEFAULT_BOARD } from "./boards";
 import type { PlayerCard } from "./og";
+import { supporterRole } from "./supporters";
 import type { PlayerData } from "./types";
 
 /** Courbe de la carte : au plus 120 points (clôtures quotidiennes + relevés récents), dans l'ordre. */
@@ -23,6 +24,7 @@ export function playerCardData(p: PlayerData | null, liveBoardId: number = DEFAU
     d7: main?.d7 ?? null,
     series: thinned,
     takenAt: p.live?.takenAt ?? null,
+    supporter: supporterRole(p.name),
   };
 }
 

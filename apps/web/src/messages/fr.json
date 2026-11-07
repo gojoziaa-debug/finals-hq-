@@ -72,7 +72,9 @@
     "privacy": "Confidentialité",
     "legal": "Mentions légales",
     "hide": "Masquer mon profil",
-    "footer": "Liens du pied de page"
+    "footer": "Liens du pied de page",
+    "support": "Soutenir",
+    "studio": "Studio"
   },
   "units": {
     "rs": "RS",
@@ -545,7 +547,9 @@
     "rating": "La note sur 99, le Momentum et la Consistance",
     "methodology": "Formules, poids et exemple vivant du Rating",
     "about": "Le projet, la source des données, la non-affiliation",
-    "privacy": "Tes données, tes droits, masquer ton profil"
+    "privacy": "Tes données, tes droits, masquer ton profil",
+    "support": "Le palier Patreon, le badge Supporter, le mur",
+    "studio": "Templates vidéo 9:16 pour TikTok, Reels et Shorts"
   },
   "rating": {
     "title": "Rating FINALS HQ",
@@ -673,5 +677,11 @@
       "Un trou de collecte fausse le Momentum de la fenêtre concernée : la page État les montre.",
       "Le RS ne dit pas le rôle ni l'équipe : le Rating mesure une trajectoire de classement, pas un niveau mécanique."
     ]
+  },
+  "support": {
+    "badge": "Supporter",
+    "badgeHint": "Soutient FINALS HQ sur Patreon",
+    "badgeCreator": "Créateur",
+    "badgeCreatorHint": "Créateur de FINALS HQ"
   }
 }

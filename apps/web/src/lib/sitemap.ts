@@ -8,7 +8,7 @@ export const SITEMAPS = ["pages", "players", "clubs"] as const;
 export type SitemapName = (typeof SITEMAPS)[number];
 
 /** Pages fixes (sans préfixe de langue) ; les pages non indexées (recherche, suivi, plus, comparaison) n'y sont pas. */
-export const STATIC_PATHS = ["/", "/leaderboards", "/top-500", "/clubs", "/movers", "/rating", "/methodology", "/status", "/about", "/privacy", "/legal"];
+export const STATIC_PATHS = ["/", "/leaderboards", "/top-500", "/clubs", "/movers", "/rating", "/methodology", "/status", "/about", "/support", "/privacy", "/legal"];
 
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
