@@ -190,9 +190,9 @@ function DuelPanel({ card, locale, color }: { card: PlayerCard; locale: Locale; 
   const { base, tag } = splitName(card.name);
   const lg = leagueOf(card.league);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, height: 420, padding: "26px 32px", background: PANEL, border: `2px solid ${C.border}`, borderTop: `10px solid ${color}`, borderRadius: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, height: 360, padding: "22px 32px", background: PANEL, border: `2px solid ${C.border}`, borderTop: `10px solid ${color}`, borderRadius: 20 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-        <span style={{ fontFamily: "Display", fontWeight: 800, fontSize: nameSize(base, 104), textTransform: "uppercase", lineHeight: 0.95 }}>{base}</span>
+        <span style={{ fontFamily: "Display", fontWeight: 800, fontSize: nameSize(base, 96), textTransform: "uppercase", lineHeight: 0.95 }}>{base}</span>
         {tag && <span style={{ fontFamily: "Mono", fontSize: 32, color: C.text2 }}>{tag}</span>}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -202,14 +202,14 @@ function DuelPanel({ card, locale, color }: { card: PlayerCard; locale: Locale; 
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontFamily: "Display", fontWeight: 800, fontSize: 96, color: C.volt, lineHeight: 1 }}>{card.rank !== null ? formatRank(card.rank, locale) : "—"}</span>
+          <span style={{ fontFamily: "Display", fontWeight: 800, fontSize: 84, color: C.volt, lineHeight: 1 }}>{card.rank !== null ? formatRank(card.rank, locale) : "—"}</span>
           <span style={{ fontSize: 34, fontWeight: 600, color: C.text }}>{card.score !== null ? `${formatNumber(card.score, locale)} RS` : t.outside}</span>
           <div style={{ display: "flex", gap: 20, fontSize: 28 }}>
             {card.d24 !== null && <span style={{ color: deltaColor(card.d24) }}>{`${t.d24} ${formatSigned(card.d24, locale)}`}</span>}
             {card.d7 !== null && <span style={{ color: deltaColor(card.d7) }}>{`${t.d7} ${formatSigned(card.d7, locale)}`}</span>}
           </div>
         </div>
-        <Spark series={card.series} width={380} height={150} />
+        <Spark series={card.series} width={380} height={130} />
       </div>
     </div>
   );
@@ -229,19 +229,19 @@ export function duelVideo(a: PlayerCard, b: PlayerCard, p: VideoParams, siteUrl:
     <VideoFrame p={p}>
       <Header title={t.duel} kicker={kicker} locale={l} />
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-        {show(1) ? <DuelPanel card={a} locale={l} color={color(a)} /> : <Hidden height={420} />}
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 110 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 120, height: 120, borderRadius: 999, background: C.volt, color: C.bg, fontFamily: "Display", fontWeight: 800, fontSize: 60, marginTop: -5 }}>VS</div>
+        {show(1) ? <DuelPanel card={a} locale={l} color={color(a)} /> : <Hidden height={360} />}
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 96 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 100, height: 100, borderRadius: 999, background: C.volt, color: C.bg, fontFamily: "Display", fontWeight: 800, fontSize: 52 }}>VS</div>
         </div>
-        {show(2) ? <DuelPanel card={b} locale={l} color={color(b)} /> : <Hidden height={420} />}
+        {show(2) ? <DuelPanel card={b} locale={l} color={color(b)} /> : <Hidden height={360} />}
       </div>
       {show(3) && gap !== null ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 120, padding: "0 32px", background: PANEL, border: `2px solid ${C.volt}`, borderRadius: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 110, padding: "0 32px", background: PANEL, border: `2px solid ${C.volt}`, borderRadius: 20 }}>
           <span style={{ fontFamily: "Sans", fontWeight: 600, fontSize: 36, color: C.text2, textTransform: "uppercase", letterSpacing: 2 }}>{t.gap}</span>
           <span style={{ fontFamily: "Display", fontWeight: 800, fontSize: 80, color: C.volt }}>{`${formatNumber(gap, l)} RS`}</span>
         </div>
       ) : (
-        <Hidden height={120} label=" " />
+        <Hidden height={110} label=" " />
       )}
       <VideoFooter locale={l} takenAt={[a.takenAt, b.takenAt].filter(Boolean).sort().pop() ?? null} siteUrl={siteUrl} />
     </VideoFrame>
