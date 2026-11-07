@@ -163,7 +163,7 @@
     "rateLimited": "Trop de recherches d'affilée. Réessaie dans une minute."
   },
   "home": {
-    "kicker": "Saison 12 · Ranked Cashout",
+    "kicker": "Saison {season} · Ranked Cashout",
     "title": "Trouve un joueur, suis la saison.",
     "intro": "Les 10 000 meilleurs joueurs classés de THE FINALS, relevés toutes les 10 minutes.",
     "top500": "Ligne top 500",

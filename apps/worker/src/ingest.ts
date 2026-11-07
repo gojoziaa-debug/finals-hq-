@@ -209,6 +209,12 @@ export async function lastAppliedSnapshot(db: Db, lb: LeaderboardDef): Promise<L
 export async function ingestLeaderboard(db: Db, source: DataSource, key: string, runId: number, log: Logger = quiet): Promise<FileOutcome[]> {
   const lb = leaderboardByKey(key);
   if (!lb) throw new Error("classement absent du catalogue (packages/db/src/catalog.ts), fichiers ignorés");
+  if (!lb.isLive) {
+    // Season over: its frozen result comes from seasons/ (import-archives). Applying a late file here
+    // would recreate leaderboard_current rows that import-archives has just removed.
+    log(`[${key}] saison terminée dans le catalogue, chaîne ignorée`);
+    return [];
+  }
   const manifest = await source.readManifest(key);
   const files = await source.listArchiveFiles(key);
   if (manifest?.base) files.push(manifest.base.file, ...manifest.deltas.map((d) => d.file));
