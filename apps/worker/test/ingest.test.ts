@@ -215,6 +215,29 @@ describe("ingestion of a collector chain", () => {
     expect((await importArchives(t.db, source)).skipped).toBe(1);
   });
 
+  it("imports the frozen file of a season that was live, and drops its current rows (season change)", async () => {
+    // s11-crossplay stands in for a season that just ended: its live chain is still in snapshots.
+    const ended = leaderboardByKey("s11-crossplay")!;
+    const at = new Date("2026-11-07T09:00:00.000Z");
+    const [player] = await t.db.insert(players).values({ embarkName: "Ended#0001", firstSeenAt: at, lastSeenAt: at }).returning({ id: players.id });
+    await t.db.insert(snapshots).values({ leaderboardId: ended.id, kind: "full", sourceFile: "full-2026-11-07T09-00-00Z.json.gz", sha256: "x", takenAt: at, rowCount: 1, status: "applied" });
+    await t.db.insert(leaderboardCurrent).values({ leaderboardId: ended.id, playerId: player!.id, name: "Ended#0001", score: 50_000, rank: 1, firstSeenAt: at, lastChangeAt: at, updatedAt: at });
+    await writeFull(root, "s11-crossplay", "2026-11-07T11:00:00.000Z", [rankedRow(1, "Ended#0001", 51_000, 20)], "seasons");
+    const summary = await importArchives(t.db, source, { only: "s11-crossplay" });
+    expect(summary.applied).toBe(1);
+    const results = await t.db.select().from(seasonResults).where(eq(seasonResults.leaderboardId, ended.id));
+    expect(results).toMatchObject([{ playerId: player!.id, finalRank: 1, finalScore: 51_000 }]);
+    expect(await count("leaderboard_current", `WHERE leaderboard_id = ${ended.id}`)).toBe(0);
+    expect((await importArchives(t.db, source, { only: "s11-crossplay" })).skipped).toBe(1);
+  });
+
+  it("ignores the state chain of a board whose season is over", async () => {
+    await writeFull(root, "s11-crossplay", "2026-11-07T12:00:00.000Z", [rankedRow(1, "Ended#0001", 52_000, 20)]);
+    const summary = await ingest({ only: "s11-crossplay" });
+    expect(summary.applied).toBe(0);
+    expect(await count("leaderboard_current", `WHERE leaderboard_id = ${leaderboardByKey("s11-crossplay")!.id}`)).toBe(0);
+  });
+
   it("keeps daily closes but no events on a 'daily' board, deltas measured since the previous close", async () => {
     const row = (rank: number, name: string, points: number) => ({ rank, name, steamName: "", psnName: "", xboxName: "", clubTag: "", clubUuid: "", officialClubName: "", points });
     const full = await writeFull(root, DAILY_KEY, "2026-11-06T06:00:00.000Z", [row(1, "Alpha#0001", 600_000), row(2, "India#0009", 500_000), row(3, "Juliet#0010", 400_000)]);

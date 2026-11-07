@@ -4,7 +4,7 @@
  */
 import { describeError } from "./errors.ts";
 import { leaderboardByKey, schema, type Db, type LeaderboardDef } from "@finals-hq/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { FileFormatError, type FullSnapshot } from "./files.ts";
 import { resolveIdentities, platformCounts } from "./identity.ts";
 import { RowError, extraFields, indexRows } from "./normalize.ts";
@@ -12,7 +12,7 @@ import { finishRun, startRun, summarize, syncCatalog, writeCutoffs, type FileOut
 import type { DataSource } from "./source.ts";
 import { chunk } from "./state.ts";
 
-const { snapshots, seasonResults, clubs } = schema;
+const { snapshots, seasonResults, clubs, leaderboardCurrent } = schema;
 const CHUNK = 2000; // see ingest.ts
 
 export interface ArchiveOptions {
@@ -34,7 +34,13 @@ export async function importArchives(db: Db, source: DataSource, options: Archiv
       errors.push(`${key} : classement absent du catalogue`);
       continue;
     }
-    const [known] = await db.select({ id: snapshots.id }).from(snapshots).where(eq(snapshots.leaderboardId, lb.id)).limit(1);
+    // Only an archive snapshot counts: a season that just ended still has its live chain (full/delta)
+    // in snapshots, and its frozen file must be imported anyway (season-change rehearsal, 7 Nov 2026).
+    const [known] = await db
+      .select({ id: snapshots.id })
+      .from(snapshots)
+      .where(and(eq(snapshots.leaderboardId, lb.id), eq(snapshots.kind, "archive")))
+      .limit(1);
     if (known) {
       outcomes.push({ key, file, status: "skipped" });
       continue;
@@ -103,6 +109,10 @@ async function importOne(db: Db, source: DataSource, lb: LeaderboardDef, file: s
       for (const r of rows) if (r.clubUuid && r.clubTag) clubValues.set(r.clubUuid, { clubUuid: r.clubUuid, tag: r.clubTag, officialName: r.officialClubName, firstSeenAt: takenAt, lastSeenAt: takenAt });
       for (const part of chunk([...clubValues.values()], CHUNK)) await tx.insert(clubs).values(part).onConflictDoNothing();
       await writeCutoffs(tx, lb, snapshotId, takenAt, rows);
+      // A board that was live until the season change: its current rows are now dead weight (the site
+      // reads season_results for archived boards) and would show up as "current" on profiles.
+      const freed = await tx.delete(leaderboardCurrent).where(eq(leaderboardCurrent.leaderboardId, lb.id)).returning({ playerId: leaderboardCurrent.playerId });
+      if (freed.length > 0) log(`[${lb.key}] ${freed.length} lignes de leaderboard_current supprimées (saison terminée)`);
       const { byName: _ignored, ...identity } = resolution;
       return { key: lb.key, file, status: "applied" as const, takenAt: takenAt.toISOString(), rows: values.length, events: 0, identity };
     });
