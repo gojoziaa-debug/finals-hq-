@@ -98,7 +98,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
               <p>{t("source")}</p>
               <nav aria-label={tn("footer")}>
                 <ul className="flex flex-wrap gap-x-4 gap-y-1">
-                  {(["about", "status", "following", "privacy", "legal"] as const).map((k) => (
+                  {(["about", "support", "studio", "status", "following", "privacy", "legal"] as const).map((k) => (
                     <li key={k}>
                       <Link href={`/${k}`} className="inline-flex min-h-6 items-center underline hover:text-text">{tn(k)}</Link>
                     </li>

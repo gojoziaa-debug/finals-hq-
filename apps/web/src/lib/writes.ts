@@ -5,7 +5,7 @@
 import { queryRows, type Db } from "@finals-hq/db";
 import { sql } from "drizzle-orm";
 
-export const USAGE_EVENTS = ["profile_view", "card", "story", "follow", "search_empty", "share", "hide_request"] as const;
+export const USAGE_EVENTS = ["profile_view", "card", "story", "follow", "search_empty", "share", "hide_request", "video", "support_click"] as const;
 export type UsageEvent = (typeof USAGE_EVENTS)[number];
 
 export function isUsageEvent(e: unknown): e is UsageEvent {

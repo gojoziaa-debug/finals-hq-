@@ -272,6 +272,39 @@ if (process.env.DATABASE_URL) {
   execFileSync("psql", [process.env.DATABASE_URL, "-qc", "DELETE FROM hidden_profiles WHERE reason = 'test e2e'"]);
 }
 
+// Sprint 7 : badge Supporter, page Soutenir, templates vidéo et Studio.
+page = await newPage(phone);
+await page.goto(`${BASE}/fr/players/GOJO-6255`);
+const badge = page.getByRole("link", { name: "Créateur" }).first();
+check(await badge.isVisible(), "profil GOJO#6255 : badge Créateur (liste des supporters)");
+await page.screenshot({ path: join(out, "16-badge-profil-telephone.png") });
+await page.goto(`${BASE}/fr/players/${board.rows.name.find((n, i) => n && i > 100 && /#\d{4}$/.test(n) && !/^GOJO/.test(n)).replace("#", "-")}`);
+check((await page.getByRole("link", { name: /^(Supporter|Créateur)$/ }).count()) === 0, "profil hors liste : aucun badge");
+for (const [path, heading] of [["/fr/support", "Soutenir FINALS HQ"], ["/en/support", "Support FINALS HQ"], ["/fr/studio", "Studio"]]) {
+  await page.goto(`${BASE}${path}`);
+  check(await page.getByRole("heading", { level: 1, name: heading }).isVisible(), `page ${path}`);
+  await axe(page, path);
+}
+await page.goto(`${BASE}/fr/support`);
+check(await page.getByRole("link", { name: /GOJO/ }).first().isVisible(), "mur des supporters : GOJO#6255 avec lien vers son profil");
+check((await page.getByRole("link", { name: /Rejoindre sur Patreon/ }).getAttribute("href"))?.startsWith("https://www.patreon.com/"), "Soutenir : bouton vers le palier Patreon");
+await page.screenshot({ path: join(out, "17-soutenir-telephone.png"), fullPage: true });
+await page.goto(`${BASE}/fr/about`);
+check(await page.getByRole("link", { name: "Soutenir FINALS HQ" }).isVisible(), "À propos : lien vers Soutenir");
+check((await page.locator("footer").getByRole("link", { name: "Soutenir" }).count()) === 1, "pied de page : lien Soutenir");
+for (const [q, w, h] of [["movers?l=fr&w=24h", 1080, 1920], ["movers?l=en&w=24h&n=3&step=2&bg=transparent", 1080, 1920], ["duel?l=fr", 1080, 1920], ["duel?l=en&p=GOJO-6255,EkaZo-5318&step=3", 1080, 1920], ["cutoff?l=fr&dl=1", 1080, 1920]]) {
+  const res = await page.request.get(`${BASE}/api/og/video/${q}`);
+  const buf = await res.body();
+  check(res.ok() && res.headers()["content-type"] === "image/png" && pngSize(buf).join("×") === `${w}×${h}`, `template vidéo ${q} : PNG ${res.ok() ? pngSize(buf).join("×") : res.status()}`);
+  if (q.includes("dl=1")) check(/attachment; filename="finals-hq-cutoff-\d{4}-\d{2}-\d{2}-full\.png"/.test(res.headers()["content-disposition"] ?? ""), `téléchargement nommé : ${res.headers()["content-disposition"]}`);
+}
+check((await page.request.get(`${BASE}/api/og/video/club`)).status() === 404, "template inconnu : 404");
+await page.goto(`${BASE}/fr/studio?w=24h&n=3&safe=1`);
+await page.waitForFunction(() => [...document.querySelectorAll("main img")].every((i) => i.complete && i.naturalWidth === 1080), null, { timeout: 20_000 }).then(() => check(true, "Studio : 3 aperçus 1080×1920 chargés"), () => check(false, "Studio : aperçus chargés"));
+check((await page.getByRole("link", { name: /^Étape \d$/ }).count()) === 9, "Studio : 3 + 3 + 3 étapes à télécharger");
+check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Studio : aucun défilement horizontal");
+await page.screenshot({ path: join(out, "18-studio-telephone.png"), fullPage: true });
+
 // Ordinateur : palette ⌘K.
 const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "dark", deviceScaleFactor: 1 });
 page = await newPage(desktop);
@@ -287,6 +320,9 @@ await page.waitForURL(/players\/GOJO-6255/);
 check(true, "palette ⌘K → profil au clavier");
 await page.goto(`${BASE}/en`);
 await page.screenshot({ path: join(out, "12-accueil-ordinateur-en.png"), fullPage: true });
+await page.goto(`${BASE}/fr/studio`);
+await page.waitForFunction(() => [...document.querySelectorAll("main img")].every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20_000 }).catch(() => undefined);
+await page.screenshot({ path: join(out, "19-studio-ordinateur.png"), fullPage: true });
 
 check(errors.length === 0, `aucune erreur console${errors.length ? `\n    ${errors.slice(0, 5).join("\n    ")}` : ""}`);
 await browser.close();

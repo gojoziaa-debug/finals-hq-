@@ -72,7 +72,9 @@
     "privacy": "Privacy",
     "legal": "Legal notice",
     "hide": "Hide my profile",
-    "footer": "Footer links"
+    "footer": "Footer links",
+    "support": "Support",
+    "studio": "Studio"
   },
   "units": {
     "rs": "RS",
@@ -545,7 +547,9 @@
     "rating": "The score out of 99, Momentum and Consistency",
     "methodology": "Formulas, weights and a live example of the Rating",
     "about": "The project, the data source, non-affiliation",
-    "privacy": "Your data, your rights, hiding your profile"
+    "privacy": "Your data, your rights, hiding your profile",
+    "support": "The Patreon tier, the Supporter badge, the wall",
+    "studio": "9:16 video templates for TikTok, Reels and Shorts"
   },
   "rating": {
     "title": "FINALS HQ Rating",
@@ -673,5 +677,11 @@
       "A collection gap skews the Momentum of the affected window: the Status page shows them.",
       "RS says nothing about role or team: the Rating measures a ranking trajectory, not mechanical skill."
     ]
+  },
+  "support": {
+    "badge": "Supporter",
+    "badgeHint": "Supports FINALS HQ on Patreon",
+    "badgeCreator": "Creator",
+    "badgeCreatorHint": "Creator of FINALS HQ"
   }
 }

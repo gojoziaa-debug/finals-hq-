@@ -44,6 +44,13 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         <p>
           FINALS HQ is a fan project, <strong>not affiliated with Embark Studios</strong>. THE FINALS is a trademark of Embark Studios AB. The site uses no logo, artwork or file from the game, and no account or game login is ever asked.
         </p>
+        <H2>Support the project</H2>
+        <p>
+          FINALS HQ stays free and ad-free. If it helps you, you can support it on Patreon and get the Supporter badge on your profile: <Link href="/support" className={link}>Support FINALS HQ</Link>. Donations go to the FINALS HQ project, not to Embark Studios, which neither receives nor endorses them.
+        </p>
+        <p>
+          Making videos about THE FINALS? The <Link href="/studio" className={link}>Studio</Link> exports the top movers, a duel and the top 500 line as 1080×1920 images, ready for your editing software.
+        </p>
         <H2>Your profile</H2>
         <p>
           Your profile is built from public leaderboards. You can hide it at any time: <Link href="/privacy/request" className={link}>hide my profile</Link>. Details in <Link href="/privacy" className={link}>Privacy</Link> and <Link href="/legal" className={link}>Legal notice</Link>.
@@ -69,6 +76,13 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       <H2>Ce que ce n&apos;est pas</H2>
       <p>
         FINALS HQ est un projet de fans, <strong>non affilié à Embark Studios</strong>. THE FINALS est une marque d&apos;Embark Studios AB. Le site n&apos;utilise aucun logo, visuel ni fichier du jeu, et ne te demande jamais de compte ni d&apos;identifiant de jeu.
+      </p>
+      <H2>Soutenir le projet</H2>
+      <p>
+        FINALS HQ reste gratuit et sans publicité. Si le site t&apos;est utile, tu peux le soutenir sur Patreon et recevoir le badge Supporter sur ton profil : <Link href="/support" className={link}>Soutenir FINALS HQ</Link>. Les dons vont au projet FINALS HQ, pas à Embark Studios, qui ne les reçoit pas et ne les cautionne pas.
+      </p>
+      <p>
+        Tu fais des vidéos sur THE FINALS ? Le <Link href="/studio" className={link}>Studio</Link> exporte les progressions, un duel et la ligne top 500 en images 1080×1920, prêtes pour ton logiciel de montage.
       </p>
       <H2>Ton profil</H2>
       <p>

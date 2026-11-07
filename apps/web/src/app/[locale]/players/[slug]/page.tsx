@@ -20,6 +20,7 @@ import { StoryButton } from "@/components/hq/StoryButton";
 import { Beacon } from "@/components/hq/Beacon";
 import { EmptyState } from "@/components/hq/States";
 import { StickyPlayerBar } from "@/components/hq/StickyPlayerBar";
+import { SupporterBadge } from "@/components/hq/SupporterBadge";
 import { buttonClasses } from "@/components/hq/Button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
@@ -35,6 +36,7 @@ import { activeDays, career as careerOf, DAY_MS, daysSince, heatmap, lastPoint, 
 import type { PlayerData } from "@/lib/types";
 import { cardPath } from "@/lib/cards";
 import { alternates } from "@/lib/site";
+import { supporterRole } from "@/lib/supporters";
 
 export const revalidate = 120;
 
@@ -103,6 +105,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
   const main = player.current.find((c) => c.leaderboardId === DEFAULT_BOARD.id) ?? null;
   const others = player.current.filter((c) => c.leaderboardId !== DEFAULT_BOARD.id);
   const n = splitName(player.name);
+  const supporter = supporterRole(player.name);
   const platforms = [player.platforms.steam && `Steam · ${player.platforms.steam}`, player.platforms.psn && `PSN · ${player.platforms.psn}`, player.platforms.xbox && `Xbox · ${player.platforms.xbox}`].filter((p): p is string => Boolean(p));
   const club = main?.club ?? others.find((o) => o.club)?.club ?? null;
   const historyStartLabel = live.historyStart ? formatDate(new Date(`${live.historyStart}T00:00:00Z`), l) : "—";
@@ -238,6 +241,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
               {n.base}
               {n.tag && <span className="text-text-2">{n.tag}</span>}
             </h1>
+            {supporter && <SupporterBadge role={supporter} className="mt-1.5" />}
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-text-2">
               {platforms.length > 0 ? <span>{platforms.join(" · ")}</span> : <span title={t("noPlatformHint")}>{t("noPlatform")}</span>}
               <span>{t("firstSeen", { date: formatDate(new Date(player.firstSeenAt), l) })}</span>

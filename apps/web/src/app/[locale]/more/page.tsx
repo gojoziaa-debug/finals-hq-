@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, BookOpen, Gauge, GitCompare, Info, Lock, Shield, TrendingUp, Trophy } from "lucide-react";
+import { Activity, ArrowRight, BookOpen, Clapperboard, Gauge, GitCompare, Heart, Info, Lock, Shield, TrendingUp, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
@@ -15,9 +15,11 @@ const ITEMS = [
   { href: "/clubs", key: "clubs", icon: Shield },
   { href: "/movers", key: "movers", icon: TrendingUp },
   { href: "/compare", key: "compare", icon: GitCompare },
+  { href: "/studio", key: "studio", icon: Clapperboard },
   { href: "/methodology", key: "methodology", icon: BookOpen },
   { href: "/status", key: "status", icon: Activity },
   { href: "/about", key: "about", icon: Info },
+  { href: "/support", key: "support", icon: Heart },
   { href: "/privacy", key: "privacy", icon: Lock },
 ] as const;
 
