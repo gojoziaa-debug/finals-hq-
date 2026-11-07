@@ -1,7 +1,7 @@
 "use client";
 import { useLocale } from "next-intl";
 import { useEffect, useId, useState } from "react";
-import { CONTACT_MAX, MESSAGE_MAX } from "@/lib/privacy-request";
+import { CONTACT_MAX, MESSAGE_MAX, parsePrivacyRequest } from "@/lib/privacy-request";
 import { Button } from "./Button";
 
 const T = {
@@ -72,12 +72,19 @@ export function HideRequestForm() {
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const payload = { player: form.get("player"), contact: form.get("contact"), message: form.get("message") ?? "", owner: form.get("owner") === "on", website: form.get("website") ?? "", locale };
+    // Mêmes règles que le serveur, vérifiées avant l'envoi (le serveur revérifie).
+    const local = parsePrivacyRequest(payload);
+    if (!local.ok && local.error !== "bot") {
+      setState({ kind: "error", key: local.error });
+      return;
+    }
     setState({ kind: "sending" });
     try {
       const res = await fetch("/api/privacy-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player: form.get("player"), contact: form.get("contact"), message: form.get("message") ?? "", owner: form.get("owner") === "on", website: form.get("website") ?? "", locale }),
+        body: JSON.stringify(payload),
       });
       const body = (await res.json().catch(() => ({}))) as { result?: "created" | "already_pending" | "already_hidden"; name?: string; error?: string };
       if (body.result) {

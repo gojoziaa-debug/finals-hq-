@@ -63,6 +63,23 @@ de quota sur Supabase Free (moyenne mensuelle, au-delà le projet passe en lectu
 
 Le site ne montre la note qu'avec `RATING_PUBLIC = true` (apps/web/src/lib/rating.ts) **et** sept jours de relevés ; les previews Vercel l'affichent déjà. Mesuré en local le 6 nov. 2026 sur l'historique réel rejoué : 10 000 joueurs notés en 1,6 s.
 
+## Demandes de masquage (sprint 6)
+
+Le formulaire du site (`/privacy/request`) enregistre une demande `pending` dans `hidden_profiles`. Rien n'est masqué
+sans décision humaine (un joueur pourrait sinon en masquer un autre).
+
+1. Lire la demande en entier (contact, message) dans l'éditeur SQL de Supabase :
+   `SELECT p.embark_name, h.* FROM hidden_profiles h JOIN players p ON p.id = h.player_id WHERE h.status = 'pending';`
+2. Vérifier que le compte est bien celui de la personne (par exemple une capture de son profil en jeu envoyée en message privé).
+3. GitHub → Actions → **privacy** → Run workflow : `apply` (masquer), `reject` (refuser, raison obligatoire) ou `lift`
+   (lever un masquage), avec le pseudo `GOJO#6255`, le slug `GOJO-6255` ou l'identifiant.
+
+Commandes locales : `pnpm worker privacy list [--all] [--show-contact]`, `privacy apply|reject|lift <joueur> [--reason …]`,
+`privacy check` (échoue si une demande attend depuis plus de 24 h ; efface les contacts 30 jours après la décision et les
+compteurs d'audience de plus de 25 mois), `privacy purge`. Les journaux d'Actions de ce dépôt sont publics : la commande
+n'y écrit jamais un contact ni un message en clair (`--show-contact` est ignoré dans Actions). Le workflow lance `check`
+deux fois par jour ; GitHub t'envoie un e-mail quand il échoue. Le masquage est visible partout en 2 à 10 minutes (caches).
+
 ## Workflow GitHub Actions
 
 `.github/workflows/ingest.yml` tourne toutes les 10 minutes (3 minutes après chaque créneau du collecteur),

@@ -5,6 +5,7 @@
  */
 import { createRequire } from "node:module";
 import { mkdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -201,6 +202,75 @@ check(true, "bouton Comparer du profil → /compare?p=GOJO-6255");
 await page.goto(`${BASE}/fr/movers?dir=down`);
 check((await page.locator("ol li").count()) > 0, "plus grosses chutes sur 24 h listées");
 await axe(page, "progressions");
+
+
+// Sprint 6 : budget JavaScript, cartes de partage, SEO, pages légales, masquage de bout en bout.
+page = await newPage(phone);
+for (const [path, budget] of [["/fr", 150], ["/fr/leaderboards/s12/ranked", 150], ["/fr/players/GOJO-6255", 150]]) {
+  await page.goto(`${BASE}${path}`, { waitUntil: "load" });
+  const kb = await page.evaluate(() => Math.round(performance.getEntriesByType("resource").filter((e) => e.initiatorType === "script").reduce((s, e) => s + e.encodedBodySize, 0) / 1024));
+  check(kb <= budget, `budget JavaScript ${path} : ${kb} Ko (≤ ${budget} Ko compressés)`);
+}
+const pngSize = (buf) => [buf.readUInt32BE(16), buf.readUInt32BE(20)];
+await page.goto(`${BASE}/fr/players/GOJO-6255`);
+const ogUrl = await page.locator('meta[property="og:image"]').getAttribute("content");
+check(Boolean(ogUrl?.includes("/api/og/player/GOJO-6255")), `profil : balise og:image (${ogUrl})`);
+check((await page.locator('meta[name="twitter:card"]').getAttribute("content")) === "summary_large_image", "profil : carte X grand format");
+check((await page.locator('link[rel="alternate"][hreflang="x-default"]').count()) === 1, "profil : hreflang x-default");
+const og = await page.request.get(ogUrl.replace(/^https?:\/\/[^/]+/, BASE));
+const ogBuf = await og.body();
+check(og.headers()["content-type"] === "image/png" && pngSize(ogBuf).join("×") === "1200×630" && /s-maxage=600/.test(og.headers()["cache-control"] ?? ""), `carte du profil : PNG ${pngSize(ogBuf).join("×")}, cache ${og.headers()["cache-control"]}`);
+const story = await (await page.request.get(`${BASE}/api/og/player/GOJO-6255?l=fr&f=story`)).body();
+check(pngSize(story).join("×") === "1080×1920", "story du profil : PNG 1080×1920");
+check((await page.getByRole("button", { name: /Story/ }).count()) >= 1, "bouton Story sur le profil");
+const club = await (await page.request.get(`${BASE}/api/og/club/${encodeURIComponent(firstTag)}?l=fr`)).body();
+check(pngSize(club).join("×") === "1200×630", `carte du club ${firstTag}`);
+const cmp = await page.request.get(`${BASE}/api/og/compare?p=GOJO-6255,EkaZo-5318&l=en`);
+check(cmp.ok() && pngSize(await cmp.body()).join("×") === "1200×630", "carte de comparaison");
+await page.getByRole("link", { name: /C'est ton profil/ }).click();
+await page.waitForURL(/privacy\/request\?player=GOJO-6255/);
+const prefilled = await page.waitForFunction(() => document.querySelector("input[name=player]")?.value === "GOJO#6255", null, { timeout: 5000 }).then(() => true, () => false);
+check(prefilled, "lien « masquer » du profil : formulaire prérempli");
+
+const robots = await (await page.request.get(`${BASE}/robots.txt`)).text();
+check(/Allow: \/api\/og\//.test(robots), "robots.txt : cartes de partage accessibles");
+const sitemap = await (await page.request.get(`${BASE}/sitemaps/players.xml`)).text();
+const urls = (sitemap.match(/<url>/g) ?? []).length;
+check(urls >= 2 && sitemap.includes("/fr/players/GOJO-6255") && sitemap.includes('hreflang="en"'), `sitemap des joueurs : ${urls} URL avec hreflang`);
+check((await page.request.get(`${BASE}/sitemap.xml`)).ok(), "index des sitemaps");
+
+for (const [path, heading] of [["/fr/privacy", "Confidentialité"], ["/en/privacy", "Privacy"], ["/fr/legal", "Mentions légales"], ["/fr/about", "À propos"], ["/fr/privacy/request", "Masquer mon profil"]]) {
+  await page.goto(`${BASE}${path}`);
+  check(await page.getByRole("heading", { level: 1, name: heading }).isVisible(), `page ${path}`);
+  await axe(page, path);
+}
+await page.screenshot({ path: join(out, "13-masquage-telephone.png"), fullPage: true });
+await page.goto(`${BASE}/fr/privacy`);
+await page.screenshot({ path: join(out, "14-confidentialite-telephone.png"), fullPage: true });
+check((await page.locator("footer").getByRole("link", { name: "Masquer mon profil" }).count()) === 1, "pied de page : lien de masquage");
+
+// Masquage : demande → worker → le pseudo disparaît de la recherche (pas de cache côté serveur).
+if (process.env.DATABASE_URL) {
+  const target = board.rows.name.find((n, i) => n && i > 2000 && /#\d{4}$/.test(n) && !/^GOJO/.test(n));
+  await page.goto(`${BASE}/fr/privacy/request`);
+  await page.getByLabel(/Ton pseudo Embark/).fill(target);
+  await page.getByLabel(/Comment te répondre/).fill("e2e@example.com");
+  await page.getByRole("button", { name: "Envoyer la demande" }).click();
+  await page.locator("form [role=alert]").waitFor({ timeout: 10_000 });
+  check((await page.locator("form [role=alert]").innerText()).includes("Coche la case"), "formulaire : refusé sans la case « je suis ce joueur »");
+  await page.getByLabel(/Je suis ce joueur/).check();
+  await page.getByRole("button", { name: "Envoyer la demande" }).click();
+  await page.getByText(/Demande reçue pour/).waitFor({ timeout: 10_000 });
+  check(true, `formulaire : demande reçue pour ${target}`);
+  await page.screenshot({ path: join(out, "15-demande-recue-telephone.png") });
+  const worker = (...args) => execFileSync("pnpm", ["-s", "--filter", "@finals-hq/worker", "worker", "privacy", ...args], { cwd: join(here, "../../../.."), env: process.env, encoding: "utf8" });
+  check(worker("list").includes(target), "worker privacy list : demande en attente, contact masqué");
+  worker("apply", target, "--reason", "test e2e");
+  const found = await (await page.request.get(`${BASE}/api/search?q=${encodeURIComponent(target)}`)).json();
+  check(!found.results.some((r) => r.name === target), `après application : ${target} absent de la recherche`);
+  worker("lift", target);
+  execFileSync("psql", [process.env.DATABASE_URL, "-qc", "DELETE FROM hidden_profiles WHERE reason = 'test e2e'"]);
+}
 
 // Ordinateur : palette ⌘K.
 const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "dark", deviceScaleFactor: 1 });

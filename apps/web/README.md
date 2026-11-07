@@ -24,6 +24,14 @@ Le site FINALS HQ : Next.js 15 (App Router), Tailwind avec les tokens du design 
 | `/api/boards/[id]` | classement complet en colonnes (≈ 445 Ko, ≈ 160 Ko compressé) | CDN 60 s |
 | `/api/search?q=` | 8 meilleurs résultats, 20 requêtes par minute et par IP | CDN 60 s |
 | `/api/health` | 200 si la base répond | aucun |
+| `/[locale]/about`, `/privacy`, `/legal` | à propos, confidentialité (RGPD), mentions légales ; identité de l'éditeur lue dans `LEGAL_*` | ISR 1 h |
+| `/[locale]/privacy/request` | formulaire de masquage (`?player=GOJO-6255` le préremplit) | ISR 1 h |
+| `/api/og/player/[slug]?l=fr&f=story` | carte de partage 1200×630, ou story 1080×1920 avec `f=story` (`&dl=1` pour la télécharger) | CDN 10 min |
+| `/api/og/club/[tag]`, `/api/og/compare?p=`, `/api/og/site` | cartes du club, de la comparaison, du site | CDN 10 min (site : 24 h) |
+| `/api/privacy-request` (POST) | enregistre une demande de masquage « pending », 5 par heure et par IP | aucun |
+| `/api/hit` (POST) | compteur d'audience du jour (`profile_view`, `follow`, `search_empty`, `share`), 60 par minute et par IP | aucun |
+| `/sitemap.xml`, `/sitemaps/{pages,players,clubs}.xml` | sitemaps avec hreflang (≈ 20 000 profils, ≈ 9 000 clubs) | CDN 1 h |
+| `/robots.txt` | tout fermé hors domaine définitif, sauf `/api/og/` | dynamique |
 
 ## Le tableau de classement
 
@@ -65,7 +73,8 @@ BASE_URL=http://localhost:3000 pnpm --filter @finals-hq/web e2e
   ne pas peser sur le budget de 150 Ko de JavaScript initial ; les erreurs des toutes premières secondes ne sont
   donc pas remontées côté navigateur (le serveur, lui, est couvert dès le démarrage).
 - **Région** : fonctions Vercel à Francfort (`fra1`, `vercel.json`), à côté de la base Supabase (eu-central-1).
-- **Robots** : tout ce qui n'est pas la production Vercel est en `noindex` (le domaine n'est pas encore choisi).
+- **Robots** : indexé seulement en production **et** sur le domaine définitif (`NEXT_PUBLIC_SITE_URL` hors `*.vercel.app`,
+  voir `src/lib/site.ts`) ; `HQ_INDEX=1` force l'indexation. Les cartes `/api/og/` restent ouvertes aux robots (X les lit).
 - **Accent clair** : `accent-ink` passe de #5E7A00 à #567000 sur le thème clair (4,49:1 → 5,1:1 sur #F4F4F7,
   mesuré par axe-core). Le thème sombre ne change pas.
 
@@ -76,3 +85,13 @@ BASE_URL=http://localhost:3000 pnpm --filter @finals-hq/web e2e
 - Rang affiché partout (classement, profil, recherche, suivi) dans le même ordre : score, puis rang stocké, puis identifiant.
 - Carrière : meilleur résultat ranked par saison terminée, toutes plateformes ; Legacy calculé avec `@finals-hq/core/rating`.
 - Le Rating (jauge, radar) arrive au sprint 5 ; le profil affiche « en calibration » d'ici là.
+
+## Partage, légal, qualité (sprint 6)
+
+- **Cartes** (`src/lib/og.tsx`, next/og) : profil, club, comparaison, site ; story 1080×1920 du profil (bouton « Story » :
+  menu de partage du téléphone avec l'image, sinon téléchargement). Polices auto-hébergées dans `assets/og-fonts`
+  (OFL, incluses dans les fonctions par `outputFileTracingIncludes`). Profil masqué ou inconnu : carte générique, jamais le pseudo.
+- **Écritures** : les seules (`src/lib/writes.ts`) sont une demande de masquage « pending » et un compteur par jour.
+  Appliquer un masquage reste une décision humaine : `worker privacy apply` (voir `apps/worker/README.md`).
+- **Audience** : Vercel Web Analytics (sans cookie, seulement si `VERCEL=1`) + compteurs du jour en base, sans IP ni identifiant.
+- **Budget** : 150 Ko de JavaScript compressé au premier chargement de l'accueil, du classement et du profil, vérifié par le parcours e2e (132, 145 et 143 Ko mesurés le 7 nov. 2026).
