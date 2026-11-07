@@ -24,7 +24,7 @@ export default async function LegalPage({ params }: { params: Promise<{ locale: 
   const t = fr
     ? {
         editor: "Éditeur",
-        editorBody: "Site édité à titre personnel et non commercial par",
+        editorBody: "Site gratuit, sans publicité ni vente, édité à titre personnel (les dons volontaires passent par Patreon) par",
         contact: "Contact",
         hosting: "Hébergement",
         site: "Site : Vercel Inc., San Francisco, États-Unis (vercel.com), fonctions exécutées à Francfort.",
@@ -40,7 +40,7 @@ export default async function LegalPage({ params }: { params: Promise<{ locale: 
       }
     : {
         editor: "Publisher",
-        editorBody: "Site published privately, with no commercial activity, by",
+        editorBody: "Free site, with no ads and nothing for sale, published privately (voluntary donations go through Patreon) by",
         contact: "Contact",
         hosting: "Hosting",
         site: "Website: Vercel Inc., San Francisco, USA (vercel.com), functions running in Frankfurt.",

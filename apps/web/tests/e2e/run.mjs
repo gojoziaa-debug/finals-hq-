@@ -287,6 +287,7 @@ for (const [path, heading] of [["/fr/support", "Soutenir FINALS HQ"], ["/en/supp
 }
 await page.goto(`${BASE}/fr/support`);
 check(await page.getByRole("link", { name: /GOJO/ }).first().isVisible(), "mur des supporters : GOJO#6255 avec lien vers son profil");
+check((await page.getByRole("link", { name: /Rejoindre sur Patreon/ }).getAttribute("href"))?.startsWith("https://www.patreon.com/"), "Soutenir : bouton vers le palier Patreon");
 await page.screenshot({ path: join(out, "17-soutenir-telephone.png"), fullPage: true });
 await page.goto(`${BASE}/fr/about`);
 check(await page.getByRole("link", { name: "Soutenir FINALS HQ" }).isVisible(), "À propos : lien vers Soutenir");

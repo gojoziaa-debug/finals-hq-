@@ -21,7 +21,7 @@ export interface SupportConfig {
   /** Adresse de la page ou du palier Patreon ; vide = pas encore ouvert (la page Soutenir le dit). */
   patreonUrl: string | null;
   tierName: string;
-  /** Prix affiché tel quel (« 3 €/mois ») ; vide = non affiché. */
+  /** Prix mensuel affiché (« 3 € », la page ajoute « / mois ») ; vide = non affiché. */
   tierPrice: string | null;
   supporters: Supporter[];
 }

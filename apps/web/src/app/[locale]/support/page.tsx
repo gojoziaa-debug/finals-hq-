@@ -78,7 +78,7 @@ export default async function SupportPage({ params }: { params: Promise<{ locale
       <section aria-label={cfg.tierName} className="grid gap-3 rounded-lg border border-accent-ink/60 bg-accent/10 p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="font-display text-display-md uppercase">{cfg.tierName}</span>
-          {cfg.tierPrice && <span className="text-body font-semibold">{cfg.tierPrice}</span>}
+          {cfg.tierPrice && <span className="text-body font-semibold">{`${cfg.tierPrice} ${l === "fr" ? "/ mois" : "/ month"}`}</span>}
         </div>
         {cfg.patreonUrl ? <PatreonButton href={cfg.patreonUrl} label={c.join} className="justify-self-start" /> : <p className="text-body-sm text-text-2">{c.soon}</p>}
         <p className="text-body-sm text-text-2">{c.paidOn}</p>
