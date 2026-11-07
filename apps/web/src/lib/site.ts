@@ -24,6 +24,19 @@ export function indexable(env: Record<string, string | undefined> = process.env)
   return !/\.vercel\.app$/i.test(new URL(siteUrl(env)).hostname);
 }
 
+/**
+ * Une fois le domaine définitif branché, l'ancienne adresse de production *.vercel.app renvoie vers lui (308),
+ * chemin et paramètres conservés. Rien en preview, rien tant que NEXT_PUBLIC_SITE_URL est encore un *.vercel.app.
+ */
+export function canonicalRedirect(host: string | null, pathAndSearch: string, env: Record<string, string | undefined> = process.env): string | null {
+  if (!host || env.VERCEL_ENV !== "production") return null;
+  const target = new URL(siteUrl(env));
+  if (/\.vercel\.app$/i.test(target.hostname)) return null;
+  const requested = host.split(":")[0]!.toLowerCase();
+  if (requested === target.hostname.toLowerCase() || !/\.vercel\.app$/i.test(requested)) return null;
+  return `${target.origin}${pathAndSearch}`;
+}
+
 /** canonical + hreflang fr/en + x-default (français, langue par défaut) pour un chemin sans préfixe de langue. */
 export function alternates(locale: string, path: string): NonNullable<Metadata["alternates"]> {
   const p = path === "/" ? "" : path;

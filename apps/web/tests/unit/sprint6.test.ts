@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cardPath, playerCardData } from "../../src/lib/cards";
 import { parsePrivacyRequest, playerRefFromInput } from "../../src/lib/privacy-request";
 import { loadSitemap } from "../../src/lib/queries";
-import { alternates, indexable, legalIdentity, siteUrl } from "../../src/lib/site";
+import { alternates, canonicalRedirect, indexable, legalIdentity, siteUrl } from "../../src/lib/site";
 import { clubPaths, pagePaths, playerPaths, sitemapIndex, urlset } from "../../src/lib/sitemap";
 import type { PlayerData } from "../../src/lib/types";
 import { bumpUsage, insertHideRequest, isUsageEvent } from "../../src/lib/writes";
@@ -140,5 +140,19 @@ describe("writes", () => {
     const s = await loadSitemap(t.db, LIVE.id);
     expect(s.players).toEqual(["Fictif#0001", "Fictif#0003"]);
     expect(s.clubs).toEqual(["HQ"]);
+  });
+});
+
+describe("redirection vers le domaine définitif", () => {
+  const prod = { VERCEL_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://finalshq.gg" };
+  it("renvoie l'adresse vercel.app de production vers finalshq.gg, chemin et paramètres conservés", () => {
+    expect(canonicalRedirect("finals-hq-nine.vercel.app", "/fr/players/GOJO-6255?tab=career", prod)).toBe("https://finalshq.gg/fr/players/GOJO-6255?tab=career");
+  });
+  it("ne fait rien sur le bon domaine, en preview, ou tant que le domaine n'est pas branché", () => {
+    expect(canonicalRedirect("finalshq.gg", "/fr", prod)).toBeNull();
+    expect(canonicalRedirect("www.finalshq.gg", "/fr", prod)).toBeNull();
+    expect(canonicalRedirect("finals-hq-git-x-gojo14.vercel.app", "/fr", { ...prod, VERCEL_ENV: "preview" })).toBeNull();
+    expect(canonicalRedirect("finals-hq-nine.vercel.app", "/fr", { VERCEL_ENV: "production", VERCEL_PROJECT_PRODUCTION_URL: "finals-hq-nine.vercel.app" })).toBeNull();
+    expect(canonicalRedirect(null, "/fr", prod)).toBeNull();
   });
 });
