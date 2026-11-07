@@ -10,7 +10,7 @@ import { RelativeTime } from "@/components/hq/RelativeTime";
 import { SearchTrigger } from "@/components/hq/SearchTrigger";
 import { ErrorState } from "@/components/hq/States";
 import { Link } from "@/i18n/navigation";
-import { boardPath, DEFAULT_BOARD } from "@/lib/boards";
+import { boardPath, DEFAULT_BOARD, LIVE_SEASON } from "@/lib/boards";
 import { cn } from "@/lib/cn";
 import { getHome } from "@/lib/data";
 import { DataUnavailableError } from "@/lib/db";
@@ -53,7 +53,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   return (
     <div className="grid grid-cols-1 gap-6">
       <section className="grid grid-cols-1 gap-3 pt-2">
-        <p className="text-caption uppercase text-accent-ink">{t("kicker")}</p>
+        <p className="text-caption uppercase text-accent-ink">{t("kicker", { season: LIVE_SEASON.id.replace(/^s/, "") })}</p>
         <h1 className="font-display text-display-xl uppercase md:text-[56px] md:leading-none">{t("title")}</h1>
         <p className="max-w-prose text-text-2">{t("intro")}</p>
         <div className="md:hidden">
