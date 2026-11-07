@@ -97,7 +97,7 @@ export default async function PrivacyPage({ params }: { params: Promise<{ locale
           You can ask us to <strong>hide your profile</strong> with the {request}. Once your request is checked, your name disappears everywhere on the site (leaderboards, search, clubs, Rating, share cards) within <strong>{HIDE_PROMISE_HOURS} hours</strong>. We may ask for a simple proof that the account is yours, to stop someone from hiding another player.
         </p>
         <p>
-          You also have the right to access, rectify, erase or restrict your data, and to object (GDPR art. 15 to 21). Write to us with the same form or at the contact above; we answer within one month. The raw snapshots archived in the public repository finals-hq-data mirror the public leaderboards as they were; you can ask for their erasure with the same form.
+          You also have the right to access, rectify, erase or restrict your data, and to object (GDPR art. 15 to 21). Write to us with the same form or at the contact above; we answer within one month. Hiding applies to this site; the raw snapshots archived in the public repository finals-hq-data mirror the public leaderboards as they were.
         </p>
         <p>
           If you think your rights are not respected, you can complain to the Belgian Data Protection Authority, rue de la Presse 35, 1000 Brussels, <A href="https://www.dataprotectionauthority.be">dataprotectionauthority.be</A>.
@@ -156,7 +156,7 @@ export default async function PrivacyPage({ params }: { params: Promise<{ locale
         Tu peux nous demander de <strong>masquer ton profil</strong> avec le {request}. Une fois ta demande vérifiée, ton pseudo disparaît partout sur le site (classements, recherche, clubs, Rating, cartes de partage) sous <strong>{HIDE_PROMISE_HOURS} heures</strong>. Nous pouvons te demander une preuve simple que le compte est le tien, pour éviter qu&apos;un joueur en masque un autre.
       </p>
       <p>
-        Tu as aussi le droit d&apos;accéder à tes données, de les rectifier, de les effacer, d&apos;en limiter le traitement et de t&apos;y opposer (articles 15 à 21 du RGPD). Écris-nous avec le même formulaire ou au contact ci-dessus ; nous répondons sous un mois. Les relevés bruts archivés dans le dépôt public finals-hq-data reproduisent les classements publics tels quels ; tu peux en demander l&apos;effacement avec le même formulaire.
+        Tu as aussi le droit d&apos;accéder à tes données, de les rectifier, de les effacer, d&apos;en limiter le traitement et de t&apos;y opposer (articles 15 à 21 du RGPD). Écris-nous avec le même formulaire ou au contact ci-dessus ; nous répondons sous un mois. Le masquage s&apos;applique au site ; les relevés bruts archivés dans le dépôt public finals-hq-data reproduisent les classements publics tels quels.
       </p>
       <p>
         Si tu estimes que tes droits ne sont pas respectés, tu peux introduire une plainte auprès de l&apos;Autorité de protection des données, rue de la Presse 35, 1000 Bruxelles, <A href="https://www.autoriteprotectiondonnees.be">autoriteprotectiondonnees.be</A>.
