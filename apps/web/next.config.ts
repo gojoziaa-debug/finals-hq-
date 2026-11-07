@@ -9,6 +9,8 @@ const config: NextConfig = {
   poweredByHeader: false,
   // Les paquets du monorepo sont du TypeScript source (imports en .ts) : Next les compile.
   transpilePackages: ["@finals-hq/db", "@finals-hq/core"],
+  // Polices des cartes de partage (lues sur le disque par next/og) : incluses dans les fonctions /api/og.
+  outputFileTracingIncludes: { "/api/og/**": ["./assets/og-fonts/**"] },
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },

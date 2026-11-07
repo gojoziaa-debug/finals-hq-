@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { DeltaChip } from "@/components/hq/DeltaChip";
 import { LeagueBadge } from "@/components/hq/LeagueBadge";
@@ -20,7 +21,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  return { title: t("clubsTitle"), description: t("clubsDescription", { season: LIVE_SEASON.name }), alternates: { canonical: `/${locale}/clubs`, languages: { fr: "/fr/clubs", en: "/en/clubs" } } };
+  return { title: t("clubsTitle"), description: t("clubsDescription", { season: LIVE_SEASON.name }), alternates: alternates(locale, "/clubs") };
 }
 
 type Search = Promise<{ q?: string | string[]; sort?: string | string[]; show?: string | string[] }>;

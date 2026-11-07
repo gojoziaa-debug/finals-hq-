@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
@@ -12,6 +13,7 @@ import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { getFreshness } from "@/lib/data";
 import { display, mono, sans } from "@/lib/fonts";
+import { siteUrl, indexable } from "@/lib/site";
 import type { FreshnessInfo } from "@/lib/types";
 
 export const viewport: Viewport = {
@@ -23,20 +25,19 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
-
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
   return {
-    metadataBase: new URL(SITE_URL),
+    metadataBase: new URL(siteUrl()),
     title: { default: t("title"), template: "%s" },
     description: t("description"),
     applicationName: "FINALS HQ",
-    openGraph: { siteName: "FINALS HQ", type: "website", locale: locale === "fr" ? "fr_FR" : "en_US" },
+    openGraph: { siteName: "FINALS HQ", type: "website", locale: locale === "fr" ? "fr_FR" : "en_US", images: [{ url: `/api/og/site?l=${locale}`, width: 1200, height: 630, alt: "FINALS HQ" }] },
+    twitter: { card: "summary_large_image" },
     icons: { icon: "/icon.svg" },
-    // Prévisualisations Vercel : jamais indexées tant que le domaine n'est pas choisi.
-    robots: process.env.VERCEL_ENV === "production" ? undefined : { index: false, follow: false },
+    // Indexé seulement en production sur le domaine définitif (voir lib/site.ts) : ni previews, ni *.vercel.app.
+    robots: indexable() ? undefined : { index: false, follow: false },
   };
 }
 
@@ -95,14 +96,24 @@ export default async function LocaleLayout({ children, params }: { children: Rea
             <div className="mx-auto max-w-container space-y-1 px-4 py-6 text-body-sm text-text-2 md:px-6 lg:px-8">
               <p>{t("notAffiliated")}</p>
               <p>{t("source")}</p>
-              <p className="flex gap-4">
-                <Link href="/status" className="underline hover:text-text">{tn("status")}</Link>
-                <Link href="/following" className="underline hover:text-text">{tn("following")}</Link>
-              </p>
+              <nav aria-label={tn("footer")}>
+                <ul className="flex flex-wrap gap-x-4 gap-y-1">
+                  {(["about", "status", "following", "privacy", "legal"] as const).map((k) => (
+                    <li key={k}>
+                      <Link href={`/${k}`} className="inline-flex min-h-6 items-center underline hover:text-text">{tn(k)}</Link>
+                    </li>
+                  ))}
+                  <li>
+                    <Link href="/privacy/request" className="inline-flex min-h-6 items-center underline hover:text-text">{tn("hide")}</Link>
+                  </li>
+                </ul>
+              </nav>
             </div>
           </footer>
           <BottomNav />
         </NextIntlClientProvider>
+        {/* Vercel Web Analytics : sans cookie ni identifiant persistant ; seulement sur Vercel (ailleurs le script n'existe pas). */}
+        {process.env.VERCEL === "1" && <Analytics />}
       </body>
     </html>
   );

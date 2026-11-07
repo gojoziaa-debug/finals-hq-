@@ -4,7 +4,7 @@ import { connect, type Connection, type Db } from "@finals-hq/db";
 /**
  * Connexion partagée par instance de fonction. Sur Vercel : DATABASE_URL = pooler Supabase en mode
  * transaction (port 6543), une seule connexion par instance, aucune requête préparée (géré par connect()).
- * Le site ne fait que des SELECT.
+ * Le site ne fait que des SELECT, plus deux écritures minuscules (lib/writes.ts) : demande de masquage, compteur du jour.
  */
 let connection: Connection | null = null;
 

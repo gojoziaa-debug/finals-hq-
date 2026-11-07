@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, BookOpen, Gauge, GitCompare, Shield, TrendingUp, Trophy } from "lucide-react";
+import { Activity, ArrowRight, BookOpen, Gauge, GitCompare, Info, Lock, Shield, TrendingUp, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
@@ -17,6 +17,8 @@ const ITEMS = [
   { href: "/compare", key: "compare", icon: GitCompare },
   { href: "/methodology", key: "methodology", icon: BookOpen },
   { href: "/status", key: "status", icon: Activity },
+  { href: "/about", key: "about", icon: Info },
+  { href: "/privacy", key: "privacy", icon: Lock },
 ] as const;
 
 /** Onglet « Plus » du téléphone (phase E) : les pages qui n'ont pas leur place dans la barre du bas. */

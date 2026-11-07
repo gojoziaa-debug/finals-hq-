@@ -6,6 +6,8 @@
  *   node --experimental-strip-types src/cli.ts import-archives [--data-root ../../data] [--only s11-crossplay]
  *   node --experimental-strip-types src/cli.ts status [--json]
  *   node --experimental-strip-types src/cli.ts rating [--force] [--min-interval 55] [--report rapport.md]
+ *   node --experimental-strip-types src/cli.ts privacy list|check|purge [--all] [--show-contact]
+ *   node --experimental-strip-types src/cli.ts privacy apply|reject|lift <joueur> [--reason "…"]
  *
  * Code de sortie 1 dès qu'un fichier est rejeté ou qu'un classement échoue : GitHub Actions prévient.
  */
@@ -21,6 +23,7 @@ import { status } from "./status.ts";
 import { runRating } from "./rating.ts";
 import { calibrationReport } from "./rating-report.ts";
 import { appendFile, writeFile } from "node:fs/promises";
+import { applyHide, findPlayer, liftHide, listRequests, overdueRequests, PENDING_ALERT_HOURS, purgeContacts, purgeUsage, rejectRequest, usageSummary } from "./privacy.ts";
 
 const log = (line: string) => console.log(`${new Date().toISOString()} ${line}`);
 
@@ -40,6 +43,9 @@ async function main(): Promise<number> {
       force: { type: "boolean", default: false },
       "min-interval": { type: "string" },
       report: { type: "string" },
+      reason: { type: "string" },
+      all: { type: "boolean", default: false },
+      "show-contact": { type: "boolean", default: false },
     },
   });
   const command = positionals[0] ?? "status";
@@ -79,7 +85,7 @@ async function main(): Promise<number> {
     }
     if (command === "status") {
       const report = await status(db);
-      console.log(JSON.stringify(report, null, 2));
+      console.log(JSON.stringify({ ...report, usage: await usageSummary(db).catch(() => []), pendingHideRequests: (await listRequests(db).catch(() => [])).length }, null, 2));
       if (report.database.alert) log(`ALERTE taille de base ${Math.round((report.database.sizeBytes ?? 0) / 1e6)} Mo (limite ${report.database.limitBytes / 1e6} Mo)`);
       return 0;
     }
@@ -100,10 +106,60 @@ async function main(): Promise<number> {
       }
       return 0;
     }
+    if (command === "privacy") return await privacy(db, positionals.slice(1), values);
     throw new Error(`commande inconnue : ${command}`);
   } finally {
     await close();
   }
+}
+
+/** Demandes de masquage (voir privacy.ts) : jamais de coordonnées en clair dans les journaux publics d'Actions. */
+async function privacy(db: Parameters<typeof listRequests>[0], args: string[], values: { reason?: string | undefined; all?: boolean | undefined; "show-contact"?: boolean | undefined }): Promise<number> {
+  const [action = "list", ref] = args;
+  const showContact = Boolean(values["show-contact"]) && !env("GITHUB_ACTIONS");
+  if (action === "list") {
+    const rows = await listRequests(db, { all: Boolean(values.all), showContact });
+    if (rows.length === 0) log(values.all ? "aucune demande de masquage" : "aucune demande en attente");
+    for (const r of rows) log(`${r.status.padEnd(8)} ${r.name} (id ${r.playerId}) demandé ${r.requestedAt}${r.decidedAt ? `, décidé ${r.decidedAt}` : ""} · contact ${r.contact ?? "—"} · message ${r.message ?? "—"}${r.reason ? ` · raison : ${r.reason}` : ""}`);
+    return 0;
+  }
+  if (action === "check") {
+    const late = await overdueRequests(db);
+    for (const r of late) log(`EN RETARD ${r.name} (id ${r.playerId}) en attente depuis ${r.requestedAt}`);
+    const purged = await purgeContacts(db);
+    await purgeUsage(db);
+    if (purged > 0) log(`coordonnées effacées pour ${purged} demande(s) décidée(s) il y a plus de 30 jours`);
+    if (late.length > 0) {
+      log(`${late.length} demande(s) de masquage en attente depuis plus de ${PENDING_ALERT_HOURS} h : à traiter (promesse : 48 h)`);
+      return 1;
+    }
+    log(`aucune demande en retard (${(await listRequests(db)).length} en attente)`);
+    return 0;
+  }
+  if (action === "purge") {
+    log(`coordonnées effacées : ${await purgeContacts(db)}`);
+    return 0;
+  }
+  if (!ref) throw new Error(`privacy ${action} : joueur attendu (pseudo GOJO#6255, slug GOJO-6255 ou identifiant)`);
+  const player = await findPlayer(db, ref);
+  if (!player) throw new Error(`joueur introuvable : ${ref}`);
+  if (action === "apply") {
+    await applyHide(db, player.id, values.reason ?? null);
+    log(`profil masqué : ${player.name} (id ${player.id}). Visible nulle part sur le site d'ici 2 à 10 minutes (caches).`);
+    return 0;
+  }
+  if (action === "reject") {
+    if (!values.reason) throw new Error("privacy reject : --reason obligatoire (elle sert de trace en cas de contestation)");
+    const ok = await rejectRequest(db, player.id, values.reason);
+    log(ok ? `demande refusée : ${player.name}` : `aucune demande en attente pour ${player.name}`);
+    return ok ? 0 : 1;
+  }
+  if (action === "lift") {
+    await liftHide(db, player.id);
+    log(`masquage levé : ${player.name} (id ${player.id})`);
+    return 0;
+  }
+  throw new Error(`privacy : action inconnue ${action} (list, check, purge, apply, reject, lift)`);
 }
 
 main()

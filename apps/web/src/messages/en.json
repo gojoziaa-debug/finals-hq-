@@ -67,7 +67,12 @@
     "compare": "Compare",
     "more": "More",
     "rating": "Rating",
-    "methodology": "Methodology"
+    "methodology": "Methodology",
+    "about": "About",
+    "privacy": "Privacy",
+    "legal": "Legal notice",
+    "hide": "Hide my profile",
+    "footer": "Footer links"
   },
   "units": {
     "rs": "RS",
@@ -304,7 +309,8 @@
     "neverSeenLive": "Not seen on the {season} ranked leaderboard since collection started ({date}).",
     "followToKnow": "Follow this player: they will show up on your Following page as soon as they get in.",
     "places": "{count, plural, one {place} other {places}}",
-    "compare": "Compare"
+    "compare": "Compare",
+    "hideOwn": "Is this your profile? You can hide it."
   },
   "career": {
     "records": "Records",
@@ -339,7 +345,11 @@
   "share": {
     "share": "Share",
     "copied": "Link copied",
-    "hint": "Copy the profile link"
+    "hint": "Copy the profile link",
+    "story": "Story",
+    "storyHint": "Vertical 1080×1920 image for Instagram or TikTok",
+    "storyReady": "Image ready",
+    "card": "Card"
   },
   "following": {
     "title": "Followed players",
@@ -533,7 +543,9 @@
     "compare": "2 to 4 players side by side",
     "status": "Snapshot freshness and collection health",
     "rating": "The score out of 99, Momentum and Consistency",
-    "methodology": "Formulas, weights and a live example of the Rating"
+    "methodology": "Formulas, weights and a live example of the Rating",
+    "about": "The project, the data source, non-affiliation",
+    "privacy": "Your data, your rights, hiding your profile"
   },
   "rating": {
     "title": "FINALS HQ Rating",

@@ -1,5 +1,6 @@
 import { RATING_VERSION } from "@finals-hq/core/rating";
 import type { Metadata } from "next";
+import { alternates } from "@/lib/site";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { InfoChip } from "@/components/hq/InfoChip";
 import { LeagueBadge } from "@/components/hq/LeagueBadge";
@@ -17,7 +18,7 @@ export const revalidate = 300;
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  return { title: t("methodologyTitle"), description: t("methodologyDescription"), alternates: { canonical: `/${locale}/methodology`, languages: { fr: "/fr/methodology", en: "/en/methodology" } } };
+  return { title: t("methodologyTitle"), description: t("methodologyDescription"), alternates: alternates(locale, "/methodology") };
 }
 
 const ROUND = (x: number | null | undefined, l: Locale, digits = 0) => (x === null || x === undefined ? "n/d" : formatDecimal(x, l, digits));

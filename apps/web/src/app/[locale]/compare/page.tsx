@@ -29,6 +29,8 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
     title: names.length >= 2 ? t("compareTitleNames", { names: names.map((n) => splitName(n).base).join(" vs ") }) : t("compareTitle"),
     description: t("compareDescription", { season: LIVE_SEASON.name }),
     robots: { index: false, follow: true },
+    // Carte de partage : 2 à 4 colonnes (rang, RS, ligue) ; carte générique sous deux joueurs.
+    ...(slugs.length >= 2 ? { openGraph: { images: [{ url: `/api/og/compare?p=${slugs.map(encodeURIComponent).join(",")}&l=${locale}`, width: 1200, height: 630 }] }, twitter: { card: "summary_large_image" as const } } : {}),
   };
 }
 
