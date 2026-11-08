@@ -80,3 +80,28 @@ export async function pruneRsEventsPartitions(db: Db, keepDays: number, now = ne
   await db.execute(sql`DELETE FROM rs_events_default WHERE taken_at < ${cutoff}::date`);
   return dropped;
 }
+
+/**
+ * Deletes the rs_events rows of the given boards (boards switched to history = 'daily') and compacts each
+ * partition that held some with VACUUM FULL: a DELETE alone leaves the space inside past partitions,
+ * which never receive new rows, so the database would not shrink before the partitions are dropped.
+ * Once the boards are clean it costs one index probe per partition (primary key starts with leaderboard_id).
+ */
+export async function purgeBoardEvents(db: Db, leaderboardIds: readonly number[]): Promise<{ deleted: number; compacted: string[] }> {
+  const result = { deleted: 0, compacted: [] as string[] };
+  if (leaderboardIds.length === 0) return result;
+  const ids = sql.join(leaderboardIds.map((id) => sql`${id}`), sql`, `);
+  const partitions = [...(await listRsEventsPartitions(db)).map((p) => p.name), "rs_events_default"];
+  for (const name of partitions) {
+    const [row] = await queryRows<{ n: number }>(
+      db,
+      sql`WITH gone AS (DELETE FROM ${sql.raw(name)} WHERE leaderboard_id IN (${ids}) RETURNING 1) SELECT count(*)::int AS n FROM gone`,
+    );
+    const n = Number(row?.n ?? 0);
+    if (n === 0) continue;
+    result.deleted += n;
+    await db.execute(sql.raw(`VACUUM FULL ${name}`));
+    result.compacted.push(name);
+  }
+  return result;
+}

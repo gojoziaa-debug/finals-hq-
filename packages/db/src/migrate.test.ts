@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { queryRows } from "./index.ts";
-import { ensureRsEventsPartition, listRsEventsPartitions, migrate, pruneRsEventsPartitions, readMigrations } from "./migrate.ts";
+import { ensureRsEventsPartition, listRsEventsPartitions, migrate, pruneRsEventsPartitions, purgeBoardEvents, readMigrations } from "./migrate.ts";
 import { createTestDb, type TestDb } from "./test.ts";
 
 describe("migrations", () => {
@@ -50,6 +50,19 @@ describe("migrations", () => {
     expect((await listRsEventsPartitions(t.db)).map((p) => p.name)).toEqual(["rs_events_2026_11_13"]);
     expect(await count("rs_events")).toBe(0);
     expect(await pruneRsEventsPartitions(t.db, 8, new Date("2026-11-14T06:00:00Z"))).toEqual([]);
+  });
+
+  it("purges the events of boards switched to daily history and compacts their partitions", async () => {
+    await ensureRsEventsPartition(t.db, new Date("2026-11-06T12:00:00Z"));
+    await ensureRsEventsPartition(t.db, new Date("2026-11-07T12:00:00Z"));
+    await t.db.execute(sql`INSERT INTO rs_events (leaderboard_id, player_id, taken_at, score, rank, snapshot_id) VALUES
+      (1500, 1, '2026-11-06T10:00:00Z', 10, 1, 1), (1512, 1, '2026-11-06T10:00:00Z', 20, 1, 1),
+      (1520, 2, '2026-11-07T10:00:00Z', 30, 1, 1), (1500, 2, '2026-11-07T10:00:00Z', 40, 2, 1)`);
+    const left = async () => (await queryRows<{ id: number }>(t.db, sql`SELECT leaderboard_id AS id FROM rs_events ORDER BY 1`)).map((r) => Number(r.id));
+    expect(await purgeBoardEvents(t.db, [1512, 1520])).toEqual({ deleted: 2, compacted: ["rs_events_2026_11_06", "rs_events_2026_11_07"] });
+    expect(await left()).toEqual([1500, 1500]);
+    expect(await purgeBoardEvents(t.db, [1512, 1520])).toEqual({ deleted: 0, compacted: [] });
+    expect(await purgeBoardEvents(t.db, [])).toEqual({ deleted: 0, compacted: [] });
   });
 
   it("has the trigram index for name search on players only", async () => {

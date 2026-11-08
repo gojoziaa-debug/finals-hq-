@@ -45,8 +45,10 @@ export interface LeaderboardDef {
   hasLeagues: boolean;
   isLive: boolean;
   /**
-   * `events` : chaque changement de score est conservé 8 jours dans rs_events (ranked, World Tour, sponsor) ;
-   * `daily` : seulement la clôture quotidienne compactée de player_history (modes casual).
+   * `events` : chaque changement de score est conservé 8 jours dans rs_events (ranked en cours seulement) ;
+   * `daily` : seulement la clôture quotidienne compactée de player_history (World Tour, sponsor, modes casual).
+   * World Tour et sponsor faisaient 90 % des événements (≈ 12 Mo par jour) pour une base Supabase Free de 500 Mo :
+   * ils passent en `daily` depuis le rodage (2026-11-08), le ranked garde le détail dont le Rating a besoin.
    */
   history: HistoryMode;
 }
@@ -206,7 +208,7 @@ function build(): LeaderboardDef[] {
           schemaVersion,
           hasLeagues,
           isLive: season.isLive,
-          history: season.isLive && (kind === "ranked" || kind === "worldtour" || kind === "sponsor") ? "events" : "daily",
+          history: season.isLive && kind === "ranked" ? "events" : "daily",
         });
       }
     }

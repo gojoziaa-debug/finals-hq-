@@ -183,7 +183,7 @@ describe("ingestion of a collector chain", () => {
     const summary = await ingest({ only: KEY });
     expect(summary.applied).toBe(1);
     expect(await count("players")).toBe(9);
-    expect(await count("rs_events")).toBe(13); // 9 on s12 + 3 on World Tour, + Golf (43 500 → 43 900)
+    expect(await count("rs_events")).toBe(10); // 9 on s12 + Golf (43 500 → 43 900); World Tour keeps daily closes only
     await refreshWindowDeltas(t.db, LB, new Date("2026-11-06T22:05:21.000Z"));
     const rows = await t.db.select().from(leaderboardCurrent).where(eq(leaderboardCurrent.leaderboardId, LB.id)).orderBy(asc(leaderboardCurrent.rank));
     const alpha = rows.find((r) => r.rank === 1)!;
@@ -270,6 +270,20 @@ describe("ingestion of a collector chain", () => {
     expect(later.find((h) => h.playerId !== india.playerId && h.scores.length === 1)!.scores).toEqual([400_000]); // Juliet, gone since the 7th
     const [alphaNow] = await t.db.select().from(leaderboardCurrent).where(and(eq(leaderboardCurrent.leaderboardId, DAILY_LB.id), eq(leaderboardCurrent.name, "Alpha#0001")));
     expect([alphaNow!.delta24h, alphaNow!.delta7d]).toEqual([10_000, null]); // vs the close of the 10th (600 000); the 4th is before the history starts
+  });
+
+  it("deletes the events left by live boards that keep daily closes only (World Tour, sponsor)", async () => {
+    const sponsor = leaderboardByKey("s12sponsor-crossplay")!;
+    expect(sponsor.history).toBe("daily");
+    const ranked = await count("rs_events");
+    const [anyPlayer] = await t.db.select().from(players).limit(1);
+    await t.client.query(`INSERT INTO rs_events (leaderboard_id, player_id, taken_at, score, rank, snapshot_id) VALUES (${sponsor.id}, ${anyPlayer!.id}, '2026-11-06T10:00:00Z', 1, 1, 1)`);
+    const lines: string[] = [];
+    const summary = await ingest({ only: KEY, log: (line) => lines.push(line) });
+    expect(summary.status).toBe("ok");
+    expect(await count("rs_events", `WHERE leaderboard_id = ${sponsor.id}`)).toBe(0);
+    expect(await count("rs_events")).toBe(ranked);
+    expect(lines.some((l) => l.includes("1 événements de classements sans détail supprimés"))).toBe(true);
   });
 
   it("drops the rs_events partitions older than keepDays at the end of a run", async () => {
