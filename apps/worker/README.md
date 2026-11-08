@@ -46,7 +46,7 @@ de quota sur Supabase Free (moyenne mensuelle, au-delà le projet passe en lectu
 | --- | --- |
 | `leaderboards.id smallint` (catalogue, jamais renuméroté) à la place de la clé texte dans toutes les tables de faits | −20 octets par ligne et par index |
 | `player_history` : un tableau `scores[]`, `ranks[]`, `league_numbers[]` par (classement, joueur), élément i = clôture du jour `history_start_day + i − 1`, NULL = absent ou jour sans relevé | ≈ 8 octets par joueur et par jour au lieu d'une ligne indexée |
-| `rs_events` seulement pour `history = 'events'`, partitions `rs_events_YYYY_MM_DD` supprimées après `keep-days` jours | taille bornée (≈ 8 jours), suppression sans vacuum |
+| `rs_events` seulement pour `history = 'events'` (le ranked en cours depuis le 2026-11-08 : World Tour et sponsor faisaient 90 % des lignes, ≈ 12 Mo par jour), partitions `rs_events_YYYY_MM_DD` supprimées après `keep-days` jours | taille bornée (≈ 8 jours de ranked, 1 à 2 Mo par jour), suppression sans vacuum ; les lignes laissées par un classement repassé en `daily` sont effacées au passage suivant (`purgeBoardEvents`, VACUUM FULL des partitions touchées) |
 | `player_names` ne garde que les noms de plateforme et les anciens noms Embark ; recherche floue sur `players.embark_name` seulement | −140 Mo d'index |
 | `leaderboard_current` sans copie JSON de la ligne API (reconstruite depuis les colonnes + `extra`) | −30 Mo |
 

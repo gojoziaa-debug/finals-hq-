@@ -34,7 +34,7 @@ describe("catalog", () => {
     expect(leaderboardByKey("s12soloshowdown-crossplay")!.id).toBe(1580);
     expect(leaderboardByKey("ce48")!.id).toBe(9048);
     expect(leaderboardById(1500)?.key).toBe("s12-crossplay");
-    expect(LEADERBOARDS.filter((lb) => lb.history === "events").map((lb) => lb.key)).toEqual(["s12-crossplay", "s12sponsor-crossplay", "s12worldtour-crossplay"]);
+    expect(LEADERBOARDS.filter((lb) => lb.history === "events").map((lb) => lb.key)).toEqual(["s12-crossplay"]);
   });
   it("builds upstream paths and league names", () => {
     expect(upstreamPath(leaderboardByKey("s12-crossplay")!)).toBe("/v1/leaderboard/s12/crossplay");

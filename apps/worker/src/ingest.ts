@@ -7,7 +7,7 @@
  * journalières sont purgées en fin de passage (`keepDays`).
  */
 import { LEADERBOARDS, SEASONS, leaderboardByKey, schema, timestamptz, type Db, type LeaderboardDef } from "@finals-hq/db";
-import { ensureRsEventsPartition, pruneRsEventsPartitions } from "@finals-hq/db/migrate";
+import { ensureRsEventsPartition, pruneRsEventsPartitions, purgeBoardEvents } from "@finals-hq/db/migrate";
 import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { FileFormatError, type DeltaSnapshot, type Row, type SnapshotFile } from "./files.ts";
 import { platformCounts, resolveIdentities, type RemovedPlayer, type Resolution } from "./identity.ts";
@@ -182,6 +182,15 @@ export async function ingestAll(db: Db, source: DataSource, options: IngestOptio
       errors.push(message);
       log(`[${key}] ERREUR ${describeError(error)}`);
     }
+  }
+  try {
+    // Live boards without event history (World Tour and sponsor since 2026-11-08): drop what they wrote before.
+    const daily = LEADERBOARDS.filter((lb) => lb.isLive && lb.history !== "events").map((lb) => lb.id);
+    const purge = await purgeBoardEvents(db, daily);
+    if (purge.deleted > 0) log(`rs_events : ${purge.deleted} événements de classements sans détail supprimés, ${purge.compacted.join(", ")} compactée(s)`);
+  } catch (error) {
+    errors.push(`purge des événements sans détail : ${describeError(error)}`);
+    log(`ERREUR purge des événements sans détail : ${describeError(error)}`);
   }
   let pruned: string[] = [];
   try {
