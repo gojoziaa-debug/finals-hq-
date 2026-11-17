@@ -90,6 +90,15 @@ jobs:
           DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
         run: pnpm --filter @finals-hq/worker worker rating ${{ inputs.force_rating && '--force' || '' }}
 
+      # Incident du 12 nov. 2026 : players et leaderboard_current regonflent à chaque passage. Compactage
+      # (VACUUM FULL, aucune ligne supprimée) seulement au-delà de 450 Mo et s'il y a vraiment de la place à gagner.
+      - name: Compact
+        if: (inputs.command || 'ingest') == 'ingest' && (inputs.only || '') == ''
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}
+        run: pnpm --filter @finals-hq/worker worker compact
+
       - name: Status
         if: always() && env.HAS_DATABASE == 'true'
         env:
