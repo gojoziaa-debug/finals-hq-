@@ -6,6 +6,7 @@
  *   node --experimental-strip-types src/cli.ts import-archives [--data-root ../../data] [--only s11-crossplay]
  *   node --experimental-strip-types src/cli.ts status [--json]
  *   node --experimental-strip-types src/cli.ts rating [--force] [--min-interval 55] [--report rapport.md]
+ *   node --experimental-strip-types src/cli.ts compact [--force] [--threshold-mb 450]
  *   node --experimental-strip-types src/cli.ts privacy list|check|purge [--all] [--show-contact]
  *   node --experimental-strip-types src/cli.ts privacy apply|reject|lift <joueur> [--reason "…"]
  *
@@ -22,6 +23,7 @@ import { DataSource } from "./source.ts";
 import { status } from "./status.ts";
 import { runRating } from "./rating.ts";
 import { calibrationReport } from "./rating-report.ts";
+import { compactTables, DEFAULT_COMPACT_THRESHOLD_BYTES } from "./compact.ts";
 import { appendFile, writeFile } from "node:fs/promises";
 import { applyHide, findPlayer, liftHide, listRequests, overdueRequests, PENDING_ALERT_HOURS, purgeContacts, purgeUsage, rejectRequest, usageSummary } from "./privacy.ts";
 
@@ -43,6 +45,7 @@ async function main(): Promise<number> {
       force: { type: "boolean", default: false },
       "min-interval": { type: "string" },
       report: { type: "string" },
+      "threshold-mb": { type: "string" },
       reason: { type: "string" },
       all: { type: "boolean", default: false },
       "show-contact": { type: "boolean", default: false },
@@ -104,6 +107,14 @@ async function main(): Promise<number> {
         const summary = env("GITHUB_STEP_SUMMARY");
         if (summary) await appendFile(summary, `${markdown}\n`);
       }
+      return 0;
+    }
+    if (command === "compact") {
+      const thresholdMb = Number(values["threshold-mb"] ?? env("COMPACT_THRESHOLD_MB") ?? DEFAULT_COMPACT_THRESHOLD_BYTES / 1e6);
+      const r = await compactTables(db, { thresholdBytes: thresholdMb * 1e6, force: values.force, log });
+      if (r.skipped) log(`compactage ignoré : ${r.skipped}`);
+      for (const t of r.tables) if (t.skipped) log(`compactage ${t.name} ignoré (${t.skipped})`);
+      if (!r.skipped) log(`base : ${Math.round(r.sizeBefore / 1e6)} → ${Math.round(r.sizeAfter / 1e6)} Mo`);
       return 0;
     }
     if (command === "privacy") return await privacy(db, positionals.slice(1), values);
